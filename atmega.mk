@@ -71,8 +71,8 @@ LDFLAGS := -mmcu=$(MCU) -Wl,-Os -Wl,--gc-sections $(LIB_INCLUDE) $(LDFLAGS)
 DEPFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -MM $(INCLUDE)
 
 # Objects and their dependencies
-OBJS := $(SOURCES:.c=.o)
 OBJS := $(SOURCES:.cpp=.o)
+OBJS := $(OBJS:.c=.o)
 OBJS := $(addprefix $(BUILD_DIR)/, $(notdir $(OBJS)))
 
 DEPS =  $(OBJS:.o=.d)
@@ -106,7 +106,7 @@ $(PROGRAM).elf : $(OBJS)
 
 # only used when building a library
 lib$(LIBNAME).a : $(OBJS)
-	@echo "AR $@ $<"
+	@echo "AR $@ $(OBJS)"
 	@$(AR) cr $@ $(OBJS)
 
 $(BUILD_DIR)/%.o: %.c
