@@ -1,0 +1,62 @@
+/* PORT A
+   [3:0] LCD Resistive Touch (IN/OUT)
+   [4]   Status LED (OUT)
+   [5]   BlueTooth Status (IN)
+   [6]   Software UART TX (OUT)
+   [7]   Software UART RX (IN)
+*/
+
+PINOUT(TOUCH_YM,   A, 0)
+PINOUT(TOUCH_XM,   A, 1)
+PINOUT(TOUCH_YP,   A, 2)
+PINOUT(TOUCH_XP,   A, 3)
+PINOUT(STATUS_LED, A, 4)
+PINOUT(BT_STATUS,  A, 5)
+PINOUT(TX_SOFT,    A, 6)
+PINOUT(RX_SOFT,    A, 7)
+
+/* PORT B
+   [0] NRF Chip Enable (OUT)
+   [1] HC-05 Key (OUT)
+   [2] HC-05 Power Enable (OUT)
+   [3] LCD Backlight (OUT PWM)
+   [4] NRF Chip Select (SPI_SS)
+   [5] NRF MOSI (SPI_MOSI)
+   [6] NRF MISO (SPI_MISO)
+   [7] NRF SCK (SPI_SCK)
+*/
+
+PINOUT(NRF_CE,        B, 0);
+PINOUT(HC05_KEY,      B, 1);
+PINOUT(HC05_ENABLE,   B, 2);
+PINOUT(LCD_BACKLIGHT, B, 3);
+PINOUT(NRF_CS,        B, 4);
+PINOUT(NRF_MOSI,      B, 5);
+PINOUT(NRF_MISO,      B, 6);
+PINOUT(NRF_SCK,       B, 7);
+
+/* PORT C
+   [7:0] LCD 8-bit Parallel Data In (IN/OUT)
+*/
+
+PINOUT(LCD_DIN, C, 0b11111111)
+
+/* PORT D
+   [0] HC-05 RX (UART_RX)
+   [1] HC-05 TX (UART_TX)
+   [2] NRF Interrupt Request (IN)
+   [3] LCD Reset (OUT)
+   [4] LCD Read (OUT)
+   [5] LCD Write (OUT)
+   [6] LCD Command/Data (OUT)
+   [7] LCD Chip Select (OUT)
+*/
+
+PINOUT(HC05_RX,   D, 0) 
+PINOUT(HC05_TX,   D, 1) 
+PINOUT(NRF_IRQ,   D, 2)
+PINOUT(LCD_RESET, D, 3)
+PINOUT(LCD_RD,    D, 4)
+PINOUT(LCD_WR,    D, 5)
+PINOUT(LCD_CD,    D, 6)
+PINOUT(LCD_CS,    D, 7)
