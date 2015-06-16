@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <util/delay.h>
+#include "fun.h"
 
 // libraries
 #include <MEGA32A_UART_LIBRARY.h>
@@ -35,11 +36,6 @@ int main()
   printf("All init\n");
   lcd.begin();
 
-  for(;;) {
-    printf("Things are working!\n");
-    _delay_ms(1000);
-  }
-
   // main must not return
+  for(;;);
 }
-
