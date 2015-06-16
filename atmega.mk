@@ -65,9 +65,9 @@ CXX := $(PREFIX)g++
 AVRDUDE := avrdude
 
 # Flags
-CFLAGS += -Os -DF_CPU=$(F_CPU) -mmcu=$(MCU) $(INCLUDE)
-CXXFLAGS := $(CFLAGS) -ffunction-sections -fdata-sections -w -fno-exceptions
-LDFLAGS := -mmcu=$(MCU) -Wl,-Os -Wl,--gc-sections $(LIB_INCLUDE) $(LDFLAGS)
+CFLAGS += -Os -DF_CPU=$(F_CPU) -mmcu=$(MCU) -ffunction-sections -fdata-sections -w -fno-exceptions $(INCLUDE)
+CXXFLAGS := $(CFLAGS)
+LDFLAGS := -Wl,-Os,--relax,--gc-sections -mmcu=$(MCU) $(LIB_INCLUDE) $(LDFLAGS)
 DEPFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -MM $(INCLUDE)
 
 # Objects and their dependencies

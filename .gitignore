@@ -1,3 +1,5 @@
 base-station.hex
 base-station.elf
 build/
+*.swp
+*.gdb_history
