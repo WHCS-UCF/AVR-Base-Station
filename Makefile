@@ -1,7 +1,8 @@
 # Makefile for WHCS Base Station
 PROGRAM=base-station
 SOURCES=main.cpp \
-	compat.cpp
+	compat.cpp \
+	whcslcd.cpp
 
 LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/ \
 	  lib/AVR-gfx-lib/
