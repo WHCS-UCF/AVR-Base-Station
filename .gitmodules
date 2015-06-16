@@ -1,3 +1,6 @@
 [submodule "lib/MEGA32A_UART_LIBRARY"]
 	path = lib/MEGA32A_UART_LIBRARY
 	url = git@github.com:WHCS-UCF/MEGA32A_UART_LIBRARY.git
+[submodule "lib/AVR-gfx-lib"]
+	path = lib/AVR-gfx-lib
+	url = git@github.com:WHCS-UCF/AVR-gfx-lib.git

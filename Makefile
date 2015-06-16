@@ -2,12 +2,13 @@
 PROGRAM=base-station
 SOURCES=main.cpp
 
-LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/
+LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/ \
+	  lib/AVR-gfx-lib/
 INCLUDE=$(LIBRARIES)
 LIB_INCLUDE=$(LIBRARIES)
 
 # include any libraries
-LDFLAGS=-lUART
+LDFLAGS=-lUART -lgfx
 
 # chip and CPU speed information
 MCU=atmega32
