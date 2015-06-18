@@ -6,6 +6,7 @@
    [7]   Software UART RX (IN)
 */
 
+PINOUT(ADC, A, 0b11111111)
 PINOUT(TOUCH_YM,   A, 0)
 PINOUT(TOUCH_XM,   A, 1)
 PINOUT(TOUCH_YP,   A, 2)

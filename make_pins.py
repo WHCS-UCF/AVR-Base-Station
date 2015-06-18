@@ -23,6 +23,7 @@ for line in f.split("\n"):
 
     fOut.write(emit_define(pinName, "_PORT", "PORT" + port))
     fOut.write(emit_define(pinName, "_DDR", " DDR" + port))
+    fOut.write(emit_define(pinName, "_PIN", " PIN" + port))
 
     if pinDef.isdigit():
         pinNumber = int(pinDef)
@@ -30,6 +31,7 @@ for line in f.split("\n"):
             raise ValueError("invalid pin bit definition")
 
         fOut.write(emit_define(pinName, "_MSK", " _BV(%s)" % pinDef))
+        fOut.write(emit_define(pinName, "_NUMBER", " %s" % pinDef))
     elif pinDef.startswith("0b"):
         pinNumber = int(pinDef[2:], 2) # parse binary value
         if pinNumber < 0 or pinNumber > 255:
