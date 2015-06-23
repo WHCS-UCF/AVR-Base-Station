@@ -13,7 +13,7 @@ void WHCSLCD::begin()
 {
   // initialize LCD auxillary pins
   // set backlight as output
-  LCD_BACKLIGHT_DDR |= LCD_BACKLIGHT_MSK;
+  PIN_MODE_OUTPUT(LCD_BACKLIGHT);
 
   screenOff();
 
@@ -28,6 +28,7 @@ void WHCSLCD::begin()
   // orient the screen as requested
   m_lcd->setRotation(m_rotation);
 
+  // allow the LCD to settle before turning it on
   _delay_ms(10);
   screenOn();
 }
@@ -39,10 +40,10 @@ void WHCSLCD::clearScreen()
 
 void WHCSLCD::screenOff()
 {
-  LCD_BACKLIGHT_PORT &= ~LCD_BACKLIGHT_MSK;
+  PIN_LOW(LCD_BACKLIGHT);
 }
 
 void WHCSLCD::screenOn()
 {
-  LCD_BACKLIGHT_PORT |= LCD_BACKLIGHT_MSK;
+  PIN_HIGH(LCD_BACKLIGHT);
 }

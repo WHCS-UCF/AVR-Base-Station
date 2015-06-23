@@ -136,12 +136,15 @@ upload : upload_spi
 upload_spi: $(PROGRAM).hex
 	$(AVRDUDE) -p $(AVRDUDE_MCU) -c usbtiny -B 1 -V -U flash:w:$(PROGRAM).hex:i
 
+upload_spi_slow: $(PROGRAM).hex
+	$(AVRDUDE) -p $(AVRDUDE_MCU) -c usbtiny -V -U flash:w:$(PROGRAM).hex:i
+
 status:
 	$(AVRDUDE) -p $(AVRDUDE_MCU) -c usbtiny
 
 clean:
-	@rm -fv *.elf
-	@rm -fv *.hex
+	@rm -fv $(PROGRAM).elf
+	@rm -fv $(PROGRAM).hex
 	@rm -fv $(BUILD_DIR)/*.o
 	@rm -fv $(BUILD_DIR)/*.i
 	@rm -fv $(BUILD_DIR)/*.d
