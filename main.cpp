@@ -37,6 +37,8 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+#define MAIN_LOOP_WARNING 300 // 300ms maximum main loop time until warning
+
 int main()
 {
   timing_init(); // initialize millis()
@@ -92,7 +94,11 @@ int main()
     time_t delta = millis() - mainStart;
 
     if(delta > maxLoopTime) {
+      if(delta > MAIN_LOOP_WARNING)
+        printf("WARNING LIMIT: ");
+
       printf("Main loop max: %lums\n", delta);
+
       maxLoopTime = delta;
     }
   }
