@@ -135,10 +135,10 @@ $(BUILD_DIR)/%.d : %.cpp
 
 upload : upload_spi
 
-upload_spi: $(PROGRAM).hex
+upload_spi: all $(PROGRAM).hex
 	$(AVRDUDE) -p $(AVRDUDE_MCU) -c usbtiny -B 1 -V -U flash:w:$(PROGRAM).hex:i
 
-upload_spi_slow: $(PROGRAM).hex
+upload_spi_slow: all $(PROGRAM).hex
 	$(AVRDUDE) -p $(AVRDUDE_MCU) -c usbtiny -V -U flash:w:$(PROGRAM).hex:i
 
 status:
