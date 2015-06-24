@@ -4,3 +4,9 @@
 [submodule "lib/AVR-gfx-lib"]
 	path = lib/AVR-gfx-lib
 	url = git@github.com:WHCS-UCF/AVR-gfx-lib.git
+[submodule "lib/MEGA32A_SPI_LIBRARY"]
+	path = lib/MEGA32A_SPI_LIBRARY
+	url = git@github.com:WHCS-UCF/MEGA32A_SPI_LIBRARY.git
+[submodule "lib/WHCS_RF24"]
+	path = lib/WHCS_RF24
+	url = git@github.com:WHCS-UCF/WHCS_RF24.git
