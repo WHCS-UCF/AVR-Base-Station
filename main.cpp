@@ -10,6 +10,7 @@
 #include "timing.h"
 #include "ADC.h"
 #include "touchscreen.h"
+#include "RF24.h"
 #include "whcslcd.h"
 #include "base_station_pins.h"
 
@@ -28,6 +29,7 @@ int uart_getchar(FILE *stream) {
   return 0;
 }
 
+RF24 radio(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
 Adafruit_TFTLCD tft;
 WHCSLCD lcd(&tft, 3);
 TouchScreen touch(300);
@@ -38,32 +40,40 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 }
 
 #define MAIN_LOOP_WARNING 300 // 300ms maximum main loop time until warning
+static FILE mystdout;
+static FILE mystdin;
 
 int main()
 {
-  timing_init(); // initialize millis()
-
+  // initialize timing (millis()) as the first call 
+  timing_init();
+  WHCSADC::init(); // this sets the ADC port as all inputs
   initUart();
-  fdevopen(uart_putchar, NULL);
-  fdevopen(NULL, uart_getchar);
+
+  // setup STDIN/STDOUT for printf
+  fdev_setup_stream(&mystdout, uart_putchar, NULL, _FDEV_SETUP_WRITE);
+  fdev_setup_stream(&mystdin, NULL, uart_getchar, _FDEV_SETUP_READ);
+  stdout = &mystdout;
+  stdin = &mystdin;
 
   printf("[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n");
 
-  WHCSADC::init();
-
+  // show that we're powered up
   PIN_MODE_OUTPUT(STATUS_LED);
   PIN_HIGH(STATUS_LED);
+
+  radio.begin();
 
   lcd.begin();
   tft.fillScreen(0x0ff0);
 
-
   //PIN_MODE_OUTPUT(HC05_ENABLE);
   //PIN_HIGH(HC05_ENABLE);
 
+  printf_P(PSTR("WHCS main loop starting\n"));
+
   // Enable interrupts before entering main event loop
   sei();
-  printf("Interrupts enabled - starting main loop\n");
 
   time_t maxLoopTime = 0;
 

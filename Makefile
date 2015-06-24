@@ -18,7 +18,7 @@ INCLUDE=$(LIBRARIES)
 LIB_INCLUDE=$(LIBRARIES)
 
 # include any libraries
-LDFLAGS=-lUART -lgfx
+LDFLAGS=-lUART -lgfx -lRF24 -lSPI 
 
 # chip and CPU speed information
 MCU=atmega32
