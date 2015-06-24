@@ -5,6 +5,8 @@ SOURCES=main.cpp \
 	whcslcd.cpp \
 	ADC.cpp \
 	touchscreen.cpp \
+	Timer.cpp \
+	timing.cpp \
 	fun.cpp
 
 LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/ \

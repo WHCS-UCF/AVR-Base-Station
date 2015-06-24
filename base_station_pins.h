@@ -19,6 +19,8 @@
   (pin_def ## _PORT |= pin_def ## _MSK)
 #define PIN_LOW(pin_def) \
   (pin_def ## _PORT &= ~pin_def ## _MSK)
+#define PIN_TOGGLE(pin_def) \
+  (pin_def ## _PORT ^= pin_def ## _MSK)
 
 #define PIN_READ(pin_def) \
   ((pin_def ## _PIN & pin_def ## _MSK) >> pin_def ## _MSK)

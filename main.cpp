@@ -1,13 +1,15 @@
-#include <stdio.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
-#include "fun.h"
-#include "ADC.h"
-#include "touchscreen.h"
+#include <stdio.h>
 
-// libraries
 #include <MEGA32A_UART_LIBRARY.h>
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
 
+#include "fun.h"
+#include "timing.h"
+#include "ADC.h"
+#include "touchscreen.h"
 #include "whcslcd.h"
 #include "base_station_pins.h"
 
@@ -27,7 +29,7 @@ int uart_getchar(FILE *stream) {
 }
 
 Adafruit_TFTLCD tft;
-WHCSLCD lcd(&tft, 1);
+WHCSLCD lcd(&tft, 3);
 TouchScreen touch(300);
 
 long map(long x, long in_min, long in_max, long out_min, long out_max)
@@ -37,59 +39,61 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 
 int main()
 {
-  WHCSADC::init();
+  timing_init(); // initialize millis()
+
   initUart();
   fdevopen(uart_putchar, NULL);
   fdevopen(NULL, uart_getchar);
 
-  STATUS_LED_DDR |= STATUS_LED_MSK;
-  STATUS_LED_PORT |= STATUS_LED_MSK;
+  printf("[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n");
 
-  printf("All init\n");
+  WHCSADC::init();
+
+  PIN_MODE_OUTPUT(STATUS_LED);
+  PIN_HIGH(STATUS_LED);
+
   lcd.begin();
-  tft.fillRect(100, 60, 120, 120, 0xff00);
+  tft.fillScreen(0x0ff0);
 
-  tft.setTextColor(0x0ff0);
-  tft.setTextSize(3);
-  tft.setCursor(110, 65);
-  tft.println("LED");
 
-  int dirty = 1;
-  int press = 0;
+  //PIN_MODE_OUTPUT(HC05_ENABLE);
+  //PIN_HIGH(HC05_ENABLE);
 
-  for(;;)
+  // Enable interrupts before entering main event loop
+  sei();
+  printf("Interrupts enabled - starting main loop\n");
+
+  time_t maxLoopTime = 0;
+
+  // Main event loop
+  Timer updown;
+  updown.periodic(3000);
+  int dir = 0;
+  while(1)
   {
-    TSPoint p = touch.getPoint();
-    printf("x = %d, y = %d, z = %d\n", p.x, p.y, p.z);
+    unsigned long mainStart = millis();
 
-    if(p.z) {
-      /*tft.drawPixel(map(p.x, 146, 877, 0, 319), 
-          map(p.y, 114, 880, 0, 239), 0x0ff0);*/
-      if(press == 0)
-        dirty = 1;
+    lcd.tick();
 
-      press = 1;
-
-      STATUS_LED_PORT ^= STATUS_LED_MSK;
-    }
-    else
+    if(updown.update())
     {
-      if(press == 1)
-        dirty = 1;
-
-      press = 0;
+      if(dir)
+      {
+        lcd.fadeUp();
+        dir = 0;
+      }
+      else
+      {
+        lcd.fadeDown();
+        dir = 1;
+      }
     }
 
-    if(STATUS_LED_PORT & STATUS_LED_MSK)
-    tft.setTextColor(0x0ff0);
-    else
-    tft.setTextColor(0x00ff);
+    time_t delta = millis() - mainStart;
 
-    if(dirty) {
-      tft.setTextSize(3);
-      tft.setCursor(110, 65);
-      tft.println("LED");
-      dirty = 0;
+    if(delta > maxLoopTime) {
+      printf("Main loop max: %lums\n", delta);
+      maxLoopTime = delta;
     }
   }
 
