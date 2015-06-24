@@ -55,7 +55,9 @@ BUILD_DIR=build
 endif
 
 # Tooling
+ifndef PREFIX
 PREFIX := avr-
+endif
 OBJDUMP := $(PREFIX)objdump
 OBJCOPY := $(PREFIX)objcopy
 SIZE := $(PREFIX)size
