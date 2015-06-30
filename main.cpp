@@ -26,7 +26,8 @@ int uart_putchar(char c, FILE *stream) {
 int uart_getchar(FILE *stream) {
   //loop_until_bit_is_set(UCSR0A, RXC0); /* Wait until data exists. */
   //return UDR0;
-  return 0;
+  //return 0;
+  return USART_ReceiveByte();
 }
 
 RF24 radio(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
@@ -67,15 +68,36 @@ int main()
   lcd.begin();
   tft.fillScreen(0x0ff0);
 
-  //PIN_MODE_OUTPUT(HC05_ENABLE);
-  //PIN_HIGH(HC05_ENABLE);
+  PIN_MODE_OUTPUT(HC05_ENABLE);
+  PIN_HIGH(HC05_ENABLE);
 
   printf_P(PSTR("WHCS main loop starting\n"));
 
   // Enable interrupts before entering main event loop
   sei();
 
-  time_t maxLoopTime = 0;
+  tft.fillScreen(0x0);
+  lcd.screenOn();
+  
+
+  radio.stopListening();
+  radio.openWritingPipe(0xE8E8F0F0E5LL);
+
+  int16_t x = 0;
+  while(1)
+  {
+    char buf[1];
+    buf[0] = getchar();
+    radio.write(buf, 1);
+
+    tft.drawChar(x, 100, buf[0], 0x0ff0, 0, 2);
+    x += 12;
+
+    if(x > 300)
+      x = 0;
+  }
+
+  /*time_t maxLoopTime = 0;
 
   // Main event loop
   Timer updown;
@@ -111,7 +133,7 @@ int main()
 
       maxLoopTime = delta;
     }
-  }
+  }*/
 
   // main must not return
   for(;;);
