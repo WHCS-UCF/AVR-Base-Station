@@ -12,7 +12,11 @@
 #include "touchscreen.h"
 #include "RF24.h"
 #include "whcslcd.h"
+#include "whcsgfx.h"
 #include "base_station_pins.h"
+
+#include "img/grant.h"
+#include "img/jimmy.h"
 
 int uart_putchar(char c, FILE *stream) {
   if (c == '\n')
@@ -33,6 +37,7 @@ int uart_getchar(FILE *stream) {
 RF24 radio(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
 Adafruit_TFTLCD tft;
 WHCSLCD lcd(&tft, 3);
+WHCSGfx gfx(&tft);
 TouchScreen touch(300);
 
 long map(long x, long in_min, long in_max, long out_min, long out_max)
@@ -76,26 +81,23 @@ int main()
   // Enable interrupts before entering main event loop
   sei();
 
-  tft.fillScreen(0x0);
   lcd.screenOn();
-  
 
-  radio.stopListening();
-  radio.openWritingPipe(0xE8E8F0F0E5LL);
+  while(1) {
+    tft.fillScreen(0x0);
+    gfx.drawAsciiArt(0, 0, gImageGrant, sizeof(gImageGrant), 0);
+    _delay_ms(2000);
 
-  int16_t x = 0;
-  while(1)
-  {
-    char buf[1];
-    buf[0] = getchar();
-    radio.write(buf, 1);
-
-    tft.drawChar(x, 100, buf[0], 0x0ff0, 0, 2);
-    x += 12;
-
-    if(x > 300)
-      x = 0;
+    tft.fillScreen(0x0);
+    gfx.drawAsciiArt(0, 0, gImageJimmy, sizeof(gImageJimmy), 0);
+    _delay_ms(2000);
   }
+
+  // allows Jimmy to test 
+  putchar(0x1b);
+  putchar(0x42);
+  putchar(0x50);
+  putchar(0x43);
 
   /*time_t maxLoopTime = 0;
 

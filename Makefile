@@ -3,6 +3,7 @@ PROGRAM=base-station
 SOURCES=main.cpp \
 	compat.cpp \
 	whcslcd.cpp \
+	whcsgfx.cpp \
 	ADC.cpp \
 	touchscreen.cpp \
 	Timer.cpp \
