@@ -5,12 +5,13 @@
 
 #include <MEGA32A_UART_LIBRARY.h>
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
+#include <RF24.h>
 
 #include "fun.h"
 #include "timing.h"
 #include "ADC.h"
 #include "touchscreen.h"
-#include "RF24.h"
+#include "Radio.h"
 #include "whcslcd.h"
 #include "whcsgfx.h"
 #include "base_station_pins.h"
@@ -34,7 +35,8 @@ int uart_getchar(FILE *stream) {
   return USART_ReceiveByte();
 }
 
-RF24 radio(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
+RF24 rf24(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
+Radio radio(&rf24, 0x41);
 Adafruit_TFTLCD tft;
 WHCSLCD lcd(&tft, 3);
 WHCSGfx gfx(&tft);
@@ -61,7 +63,7 @@ int main()
   fdev_setup_stream(&mystdin, NULL, uart_getchar, _FDEV_SETUP_READ);
   stdout = &mystdout;
   stdin = &mystdin;
-
+  
   printf("[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n");
 
   // show that we're powered up
@@ -71,8 +73,10 @@ int main()
   radio.begin();
 
   lcd.begin();
-  tft.fillScreen(0x0ff0);
+  lcd.clearScreen();
+  lcd.screenOn();
 
+  // enable the HC-05
   PIN_MODE_OUTPUT(HC05_ENABLE);
   PIN_HIGH(HC05_ENABLE);
 
@@ -81,48 +85,40 @@ int main()
   // Enable interrupts before entering main event loop
   sei();
 
-  lcd.screenOn();
-
-  while(1) {
-    tft.fillScreen(0x0);
-    gfx.drawAsciiArt(0, 0, gImageGrant, sizeof(gImageGrant), 0);
-    _delay_ms(2000);
-
-    tft.fillScreen(0x0);
-    gfx.drawAsciiArt(0, 0, gImageJimmy, sizeof(gImageJimmy), 0);
-    _delay_ms(2000);
-  }
-
-  // allows Jimmy to test 
-  putchar(0x1b);
-  putchar(0x42);
-  putchar(0x50);
-  putchar(0x43);
-
-  /*time_t maxLoopTime = 0;
+  time_t maxLoopTime = 0;
 
   // Main event loop
-  Timer updown;
-  updown.periodic(3000);
-  int dir = 0;
+  Timer evt;
+  evt.periodic(3000);
+
+  radio_pkt pkt;
+  uint8_t curData = 'A';
+
   while(1)
   {
     unsigned long mainStart = millis();
 
     lcd.tick();
 
-    if(updown.update())
+    if(evt.update())
     {
-      if(dir)
-      {
-        lcd.fadeUp();
-        dir = 0;
-      }
+      pkt.size = 1;
+      pkt.data[0] = curData;
+
+      //radio.sendTo(0xe5, &pkt);
+      rf24.openWritingPipe(0xE8E8F0F0E5LL);
+      rf24.write(pkt.data, 1);
+
+      if(curData == 'O')
+        curData = 'A';
       else
-      {
-        lcd.fadeDown();
-        dir = 1;
-      }
+        curData = 'O';
+
+      // allows Jimmy to test 
+      putchar(0x1b);
+      putchar(0x42);
+      putchar(0x50);
+      putchar(0x43);
     }
 
     time_t delta = millis() - mainStart;
@@ -135,7 +131,7 @@ int main()
 
       maxLoopTime = delta;
     }
-  }*/
+  }
 
   // main must not return
   for(;;);
