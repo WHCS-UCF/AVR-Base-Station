@@ -6,20 +6,19 @@ SOURCES=main.cpp \
 	whcsgfx.cpp \
 	ADC.cpp \
 	touchscreen.cpp \
-	Timer.cpp \
-	timing.cpp \
 	fun.cpp
 
 LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/ \
 	  lib/AVR-gfx-lib/ \
 	  lib/MEGA32A_SPI_LIBRARY/MEGA32A_SPI_LIBRARY/ \
-	  lib/WHCS_RF24/WHCS_RF24/
+	  lib/WHCS_RF24/WHCS_RF24/ \
+	  common/
 
 INCLUDE=$(LIBRARIES)
 LIB_INCLUDE=$(LIBRARIES)
 
 # include any libraries
-LDFLAGS=-lUART -lgfx -lRF24 -lSPI 
+LDFLAGS=-lcommon -lUART -lgfx -lRF24 -lSPI
 
 # chip and CPU speed information
 MCU=atmega32

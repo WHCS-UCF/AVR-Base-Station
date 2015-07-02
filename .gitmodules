@@ -10,3 +10,6 @@
 [submodule "lib/WHCS_RF24"]
 	path = lib/WHCS_RF24
 	url = git@github.com:WHCS-UCF/WHCS_RF24.git
+[submodule "common"]
+	path = common
+	url = git@github.com:WHCS-UCF/AVR-Common.git
