@@ -4,7 +4,6 @@ SOURCES=main.cpp \
 	compat.cpp \
 	whcslcd.cpp \
 	whcsgfx.cpp \
-	ADC.cpp \
 	touchscreen.cpp \
 	fun.cpp
 

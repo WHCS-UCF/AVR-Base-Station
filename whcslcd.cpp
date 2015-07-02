@@ -1,5 +1,5 @@
 #include <Adafruit_TFTLCD.h>
-#include "base_station_pins.h"
+#include "pinout.h"
 
 #include "whcslcd.h"
 

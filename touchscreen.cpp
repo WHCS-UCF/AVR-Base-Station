@@ -7,7 +7,7 @@
 
 #include "ADC.h"
 #include "touchscreen.h"
-#include "base_station_pins.h"
+#include "pinout.h"
 
 // increase or decrease the touchscreen oversampling. This is a little different than you make think:
 // 1 is no oversampling, whatever data we get is immediately returned

@@ -1,8 +1,8 @@
 /* WHCS Base Station
    Master Pin-out file
 */
-#ifndef BASE_STATION_PINS_H
-#define BASE_STATION_PINS_H
+#ifndef PINOUT_H
+#define PINOUT_H
 
 #include <avr/io.h>
 
@@ -27,4 +27,4 @@
 
 #include "pins.def.h"
 
-#endif // BASE_STATION_PINS_H
+#endif // PINOUT_H

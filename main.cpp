@@ -14,7 +14,7 @@
 #include "Radio.h"
 #include "whcslcd.h"
 #include "whcsgfx.h"
-#include "base_station_pins.h"
+#include "pinout.h"
 
 #include "img/grant.h"
 #include "img/jimmy.h"
