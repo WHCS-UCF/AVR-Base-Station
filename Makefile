@@ -25,4 +25,7 @@ MCU=atmega32
 F_CPU=16000000L
 AVRDUDE_MCU=m32
 
+# define hardware baud rate
+export USART_BAUD=9600
+
 include atmega.mk
