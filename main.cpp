@@ -18,6 +18,7 @@
 
 #include "img/grant.h"
 #include "img/jimmy.h"
+#include "img/ucf.h"
 
 int uart_putchar(char c, FILE *stream) {
   if (c == '\n')
@@ -94,6 +95,10 @@ int main()
   radio_pkt pkt;
   uint8_t curData = 'A';
 
+  rf24.openWritingPipe(0xabcdefab00LL);
+  rf24.stopListening();
+  rf24.printDetails();
+
   while(1)
   {
     unsigned long mainStart = millis();
@@ -106,13 +111,22 @@ int main()
       pkt.data[0] = curData;
 
       //radio.sendTo(0xe5, &pkt);
-      rf24.openWritingPipe(0xE8E8F0F0E5LL);
-      rf24.write(pkt.data, 1);
-
-      if(curData == 'O')
-        curData = 'A';
+      if(rf24.write(pkt.data, 1))
+        printf("PKT: %02x\n", pkt.data[0]);
       else
+        printf("PKT FAILED: %02x\n", pkt.data[0]);
+
+      lcd.clearScreen();
+      if(curData == 'O')
+      {
+        curData = 'A';
+        gfx.drawAsciiArt(0, 0, gImageUCF, sizeof(gImageGrant), 0);
+      }
+      else
+      {
         curData = 'O';
+        gfx.drawAsciiArt(0, 0, gImageJimmy, sizeof(gImageJimmy), 0);
+      }
 
       // allows Jimmy to test 
       putchar(0x1b);
