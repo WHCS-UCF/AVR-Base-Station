@@ -5,6 +5,7 @@ SOURCES=main.cpp \
 	whcslcd.cpp \
 	whcsgfx.cpp \
 	touchscreen.cpp \
+	TouchCalibrate.cpp \
 	fun.cpp
 
 LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/ \

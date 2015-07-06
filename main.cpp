@@ -15,6 +15,7 @@
 #include "whcslcd.h"
 #include "whcsgfx.h"
 #include "pinout.h"
+#include "TouchCalibrate.h"
 
 #include "img/grant.h"
 #include "img/jimmy.h"
@@ -41,12 +42,7 @@ Radio radio(&rf24, 0x41);
 Adafruit_TFTLCD tft;
 WHCSLCD lcd(&tft, 3);
 WHCSGfx gfx(&tft);
-TouchScreen touch(300);
-
-long map(long x, long in_min, long in_max, long out_min, long out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
+TouchScreen touch(300, 20); // rxplate, pressure threshold
 
 #define MAIN_LOOP_WARNING 300 // 300ms maximum main loop time until warning
 static FILE mystdout;
@@ -92,48 +88,55 @@ int main()
   Timer evt;
   evt.periodic(3000);
 
-  radio_pkt pkt;
-  uint8_t curData = 'A';
-
-  rf24.openWritingPipe(0xabcdefab00LL);
-  rf24.stopListening();
-  rf24.printDetails();
+  int down = 0;
+  TSPoint pLast;
+  TouchCalibrate uiCalibrate(&tft, &touch);
+  uiCalibrate.onCreate();
 
   while(1)
   {
     unsigned long mainStart = millis();
 
+    ///////////////////////////////////////
+
     lcd.tick();
+    uiCalibrate.tick();
 
-    if(evt.update())
+    if(uiCalibrate.isDirty())
+      uiCalibrate.draw();
+
+    TSPoint p = touch.getPoint();
+    TouchEvent te;
+
+    if(p.valid && p.z != 0)
     {
-      pkt.size = 1;
-      pkt.data[0] = curData;
-
-      //radio.sendTo(0xe5, &pkt);
-      if(rf24.write(pkt.data, 1))
-        printf("PKT: %02x\n", pkt.data[0]);
-      else
-        printf("PKT FAILED: %02x\n", pkt.data[0]);
-
-      lcd.clearScreen();
-      if(curData == 'O')
-      {
-        curData = 'A';
-        gfx.drawAsciiArt(0, 0, gImageUCF, sizeof(gImageGrant), 0);
-      }
-      else
-      {
-        curData = 'O';
-        gfx.drawAsciiArt(0, 0, gImageJimmy, sizeof(gImageJimmy), 0);
+      if(!down) {
+        //printf("TOUCH_DOWN (%d, %d)\n", p.x, p.y);
+        te.point = p;
+        te.event = TouchEvent::TOUCH_DOWN;
+        uiCalibrate.touchEvent(&te);
+        down = 1;
       }
 
-      // allows Jimmy to test 
-      putchar(0x1b);
-      putchar(0x42);
-      putchar(0x50);
-      putchar(0x43);
+      //printf("z = %d\n", p.z);
+
+      //if(p != pLast)
+        //printf("TOUCH_MOVE (%d, %d)\n", p.x, p.y);
+
+      pLast = p;
     }
+    else if(p.valid && p.z == 0)
+    {
+      if(down) {
+        //printf("TOUCH_UP (%d, %d)\n", pLast.x, pLast.y);
+        te.point = p;
+        te.event = TouchEvent::TOUCH_UP;
+        uiCalibrate.touchEvent(&te);
+        down = 0;
+      }
+    }
+
+    ///////////////////////////////////////
 
     time_t delta = millis() - mainStart;
 

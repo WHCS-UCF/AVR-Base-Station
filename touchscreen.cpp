@@ -4,9 +4,11 @@
 // Code under MIT License
 
 #include <avr/pgmspace.h>
+#include <stdio.h>
 
 #include "ADC.h"
 #include "touchscreen.h"
+#include "common.h"
 #include "pinout.h"
 
 // increase or decrease the touchscreen oversampling. This is a little different than you make think:
@@ -16,15 +18,19 @@
 // We found 2 is precise yet not too slow so we suggest sticking with it!
 
 #define NUMSAMPLES 2
+#define TOLERANCE 5 // maximum difference between 2 sample points
 
+// default constructor starts as invalid
 TSPoint::TSPoint(void) {
-  x = y = 0;
+  x = y = z = 0;
+  valid = false;
 }
 
 TSPoint::TSPoint(int16_t x0, int16_t y0, int16_t z0) {
   x = x0;
   y = y0;
   z = z0;
+  valid = true;
 }
 
 bool TSPoint::operator==(TSPoint p1) {
@@ -49,10 +55,27 @@ static void insert_sort(int array[], uint8_t size) {
 }
 #endif
 
+TouchScreen::TouchScreen() {
+  _rxplate = 0;
+  _pressureThreshold = 0;
+  _rawCoord = true;
+  _screenWidth = _screenHeight = 0;
+  _xMin = _xMax = _yMin = _yMax = 0;
+}
+
+
+TouchScreen::TouchScreen(uint16_t rxplate, int16_t threshold) {
+  _rxplate = rxplate;
+  _pressureThreshold = threshold;
+  _rawCoord = true;
+  _screenWidth = _screenHeight = 0;
+  _xMin = _xMax = _yMin = _yMax = 0;
+}
+
 TSPoint TouchScreen::getPoint(void) {
   int x, y, z;
   int samples[NUMSAMPLES];
-  uint8_t i, valid = 1; 
+  uint8_t i;
 
   PIN_MODE_INPUT(TOUCH_YM);
   PIN_MODE_INPUT(TOUCH_YP);
@@ -72,31 +95,27 @@ TSPoint TouchScreen::getPoint(void) {
 #endif
 #if NUMSAMPLES == 2
    // TODO: optimize this common case
-   if (samples[0] != samples[1]) { valid = 0; }
+   if (abs(samples[0] - samples[1]) > TOLERANCE) { return TSPoint();}
 #endif
    x = (1023 - samples[NUMSAMPLES/2]);
 
    PIN_MODE_INPUT(TOUCH_XP);
    PIN_MODE_INPUT(TOUCH_XM);
    PIN_LOW(TOUCH_XP);
-   
+
    PIN_MODE_OUTPUT(TOUCH_YP);
    PIN_MODE_OUTPUT(TOUCH_YM);
-   //pinMode(_yp, OUTPUT);
-   //*portOutputRegister(yp_port) |= yp_pin;
-   //digitalWrite(_yp, HIGH);
-   //pinMode(_ym, OUTPUT);
    PIN_HIGH(TOUCH_YP);
-  
+
    for (i=0; i<NUMSAMPLES; i++) {
-     samples[i] = WHCSADC::read(TOUCH_XM_NUMBER); //analogRead(_xm);
+     samples[i] = WHCSADC::read(TOUCH_XM_NUMBER);
    }
 
 #if NUMSAMPLES > 2
    insert_sort(samples, NUMSAMPLES);
 #endif
 #if NUMSAMPLES == 2
-   if (samples[0] != samples[1]) { valid = 0; }
+   if (abs(samples[0] - samples[1]) > TOLERANCE) { return TSPoint();}
 #endif
 
    y = (samples[NUMSAMPLES/2]);
@@ -111,8 +130,14 @@ TSPoint TouchScreen::getPoint(void) {
    int z1 = WHCSADC::read(TOUCH_XM_NUMBER);
    int z2 = WHCSADC::read(TOUCH_YP_NUMBER);
 
+   // the read pressure value is lower than the threshold
+   // return a valid point with a value of zero for pressure
+   if(z1 < _pressureThreshold)
+     return createPoint(x, y, 0);
+
    if (_rxplate != 0) {
-     // now read the x 
+     //(z2/z1 - 1)*x*_rxplate/1024
+     // now read the x
      float rtouch;
      rtouch = z2;
      rtouch /= z1;
@@ -126,99 +151,53 @@ TSPoint TouchScreen::getPoint(void) {
      z = (1023-(z2-z1));
    }
 
-   if (! valid) {
-     z = 0;
-   }
+   //printf("z %d, z1 %d, z2 %d, x %d, rx %d\n", z, z1, z2, x, _rxplate);
 
-   return TSPoint(y, x, z);
+   return createPoint(x, y, z);
 }
 
-TouchScreen::TouchScreen() {
-  _rxplate = 0;
-  pressureThreshhold = 10;
+void TouchScreen::setCalibration(int16_t screenWidth, int16_t screenHeight,
+      int16_t xMin, int16_t xMax, int16_t yMin, int16_t yMax)
+{
+  _screenWidth = screenWidth;
+  _screenHeight = screenHeight;
+  _xMin = xMin;
+  _yMin = yMin;
+  _xMax = xMax;
+  _yMax = yMax;
 }
 
-
-TouchScreen::TouchScreen(uint16_t rxplate) {
-  _rxplate = rxplate;
-
-  pressureThreshhold = 10;
+bool TouchScreen::usingRawCoords()
+{
+  return _rawCoord;
 }
 
-int TouchScreen::readTouchX(void) {
-  PIN_MODE_INPUT(TOUCH_YM);
-  PIN_MODE_INPUT(TOUCH_YP);
-  PIN_LOW(TOUCH_YM);
-  PIN_LOW(TOUCH_YP);
-
-  PIN_MODE_OUTPUT(TOUCH_XP);
-  PIN_MODE_OUTPUT(TOUCH_XM);
-  PIN_HIGH(TOUCH_XP);
-  PIN_LOW(TOUCH_XM);
-
-  return 1023-WHCSADC::read(TOUCH_YP_NUMBER);
+void TouchScreen::useScreenCoords()
+{
+  _rawCoord = false;
 }
 
-
-int TouchScreen::readTouchY(void) {
-   PIN_MODE_INPUT(TOUCH_XP);
-   PIN_MODE_INPUT(TOUCH_XM);
-   PIN_LOW(TOUCH_XP);
-   PIN_LOW(TOUCH_XM);
-
-   PIN_MODE_OUTPUT(TOUCH_YP);
-   PIN_MODE_OUTPUT(TOUCH_YM);
-   PIN_HIGH(TOUCH_YP);
-   PIN_LOW(TOUCH_YM);
-
-   return 1023-WHCSADC::read(TOUCH_XM_NUMBER);
+void TouchScreen::useRawCoords()
+{
+  _rawCoord = true;
 }
 
+TSPoint TouchScreen::createPoint(int16_t x, int16_t y, int16_t z)
+{
+  if(_rawCoord)
+    return TSPoint(x, y, z);
 
-uint16_t TouchScreen::pressure(void) {
-  PIN_MODE_OUTPUT(TOUCH_XP);
-  PIN_LOW(TOUCH_XP);
+  TSPoint p;
 
-  PIN_MODE_OUTPUT(TOUCH_YM);
-  PIN_HIGH(TOUCH_YM);
+  //p.x = map(x, _yMin, _yMax, 0, _screenWidth);
+  //p.y = map(y, _xMin, _xMax, 0, _screenHeight);
+  p.x = map(x, _xMin, _xMax, 0, _screenWidth);
+  p.y = map(y, _yMin, _yMax, 0, _screenHeight);
+  p.z = z;
+  p.valid = true;
 
-  PIN_MODE_INPUT(TOUCH_YP);
-  PIN_MODE_INPUT(TOUCH_XM);
-  PIN_LOW(TOUCH_YP);
-  PIN_LOW(TOUCH_XM);
+  /*if(p.z)
+    printf("(%d, %d) -> (%d, %d)\n", x, y, p.x, p.y);*/
 
-  int z1 = WHCSADC::read(TOUCH_XM_NUMBER);
-  int z2 = WHCSADC::read(TOUCH_YP_NUMBER);
-
-  // Set X+ to ground
-  /*pinMode(_xp, OUTPUT);
-  digitalWrite(_xp, LOW);
-  
-  // Set Y- to VCC
-  pinMode(_ym, OUTPUT);
-  digitalWrite(_ym, HIGH); 
-  
-  // Hi-Z X- and Y+
-  pinMode(_xm, INPUT);
-  pinMode(_yp, INPUT);
-  digitalWrite(_xm, LOW);
-  digitalWrite(_yp, LOW);
-  
-  int z1 = analogRead(_xm); 
-  int z2 = analogRead(_yp);*/
-
-  if (_rxplate != 0) {
-    // now read the x 
-    float rtouch;
-    rtouch = z2;
-    rtouch /= z1;
-    rtouch -= 1;
-    rtouch *= readTouchX();
-    rtouch *= _rxplate;
-    rtouch /= 1024;
-    
-    return rtouch;
-  } else {
-    return (1023-(z2-z1));
-  }
+  return p;
 }
