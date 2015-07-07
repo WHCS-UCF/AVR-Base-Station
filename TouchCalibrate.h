@@ -11,6 +11,8 @@ class TouchCalibrate
 {
   public:
     TouchCalibrate(Adafruit_TFTLCD * tft, TouchScreen * touch);
+    void reset();
+
     void touchEvent(TouchEvent * ev); // called on a touch event
     void onCreate(); // called when scene first created
     void end(); // ends the scene
@@ -32,9 +34,7 @@ class TouchCalibrate
       CAL_TR,
       CAL_BR,
       CAL_BL,
-      CAL_DONE,
-      CAL_CHECK,
-      CAL_FAILED
+      CAL_DONE
     };
 
     int16_t m_calXMin[2];

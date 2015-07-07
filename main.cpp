@@ -60,7 +60,7 @@ int main()
   fdev_setup_stream(&mystdin, NULL, uart_getchar, _FDEV_SETUP_READ);
   stdout = &mystdout;
   stdin = &mystdin;
-  
+
   printf("[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n");
 
   // show that we're powered up
