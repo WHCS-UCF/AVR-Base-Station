@@ -1,6 +1,7 @@
 # Makefile for WHCS Base Station
 PROGRAM=base-station
 SOURCES=main.cpp \
+	SoftSerial.cpp \
 	compat.cpp \
 	whcslcd.cpp \
 	whcsgfx.cpp \

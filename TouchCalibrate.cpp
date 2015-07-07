@@ -137,7 +137,14 @@ void TouchCalibrate::tick()
           xMin, xMax, yMin, yMax);
       m_touch->useScreenCoords();
 
-      m_state = CAL_DONE;
+      // start a timer to reset the calibration if the user doesn't
+      // accept after a certain amount of time
+      // this is assuming that the user is unable to accept
+      m_tReset.periodic(1000);
+
+      m_state = CAL_ACCEPT;
+      m_secondsLeft = 16;
+      m_dirty = true;
     }
     else
     {
@@ -147,10 +154,22 @@ void TouchCalibrate::tick()
       reset();
     }
   }
+  else if(m_state == CAL_ACCEPT)
+  {
+    if(m_tReset.update())
+    {
+      m_dirty = true;
+      m_secondsLeft--;
+
+      if(m_secondsLeft <= 0)
+        reset();
+    }
+  }
 }
 
 void TouchCalibrate::draw()
 {
+
   int16_t squareTableX[4] = {0, m_tft->width()-10, m_tft->width()-10, 0};
   int16_t squareTableY[4] = {0, 0, m_tft->height()-10, m_tft->height()-10};
 
@@ -169,7 +188,7 @@ void TouchCalibrate::draw()
 
   m_tft->setTextSize(2);
 
-  if(m_state != CAL_DONE)
+  if(m_state < CAL_DONE)
   {
     m_tft->setCursor(20, m_tft->height()/2-20);
     m_tft->setTextColor(COLOR_WHITE);
@@ -205,6 +224,15 @@ void TouchCalibrate::draw()
     m_tft->setCursor(65+100+15, m_tft->height()-55);
     m_tft->setTextColor(COLOR_RED);
     m_tft->println("Reset");
+  }
+
+  if(m_state == CAL_ACCEPT)
+  {
+    //m_secondsLeft
+    m_tft->setCursor(55, m_tft->height()-90);
+    m_tft->setTextColor(COLOR_WHITE);
+    m_tft->println("Reverting in");
+    m_tft->printf("   \b\b%d", m_secondsLeft);
   }
 
   m_dirty = false;

@@ -16,6 +16,7 @@
 #include "whcsgfx.h"
 #include "pinout.h"
 #include "TouchCalibrate.h"
+#include "SoftSerial.h"
 
 #include "img/grant.h"
 #include "img/jimmy.h"
@@ -37,12 +38,18 @@ int uart_getchar(FILE *stream) {
   return USART_ReceiveByte();
 }
 
+static FILE mylcdout;
 RF24 rf24(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
 Radio radio(&rf24, 0x41);
-Adafruit_TFTLCD tft;
+Adafruit_TFTLCD tft(&mylcdout);
 WHCSLCD lcd(&tft, 3);
 WHCSGfx gfx(&tft);
 TouchScreen touch(300, 20); // rxplate, pressure threshold
+
+int lcd_putchar(char c, FILE *stream) {
+  tft.write(c);
+  return 1;
+}
 
 #define MAIN_LOOP_WARNING 300 // 300ms maximum main loop time until warning
 static FILE mystdout;
@@ -50,13 +57,17 @@ static FILE mystdin;
 
 int main()
 {
+  sei(); // enable interrupts early
+
   // initialize timing (millis) as the first call 
   timing_init();
   WHCSADC::init(); // this sets the ADC port as all inputs
   initUart();
+  soft_serial_init();
 
   // setup STDIN/STDOUT for printf
-  fdev_setup_stream(&mystdout, uart_putchar, NULL, _FDEV_SETUP_WRITE);
+  fdev_setup_stream(&mystdout, soft_serial_putc, NULL, _FDEV_SETUP_WRITE);
+  fdev_setup_stream(&mylcdout, lcd_putchar, NULL, _FDEV_SETUP_WRITE);
   fdev_setup_stream(&mystdin, NULL, uart_getchar, _FDEV_SETUP_READ);
   stdout = &mystdout;
   stdin = &mystdin;
@@ -126,7 +137,7 @@ int main()
 
       //printf("z = %d\n", p.z);
 
-      //if(p != pLast)
+      //if(abs(p.x-pLast.x) > 2 || abs(p.y-pLast.y) > 2);
         //printf("TOUCH_MOVE (%d, %d)\n", p.x, p.y);
 
       pLast = p;

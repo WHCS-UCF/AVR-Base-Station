@@ -6,6 +6,7 @@
 #include <Adafruit_TFTLCD.h>
 #include "touchscreen.h"
 #include "TouchEvent.h"
+#include "Timer.h"
 
 class TouchCalibrate
 {
@@ -28,13 +29,16 @@ class TouchCalibrate
     bool m_dirty;
     bool m_done;
 
+    Timer m_tReset;
+    uint8_t m_secondsLeft;
     uint8_t m_state;
     enum cal_state {
       CAL_TL = 0,
       CAL_TR,
       CAL_BR,
       CAL_BL,
-      CAL_DONE
+      CAL_DONE,
+      CAL_ACCEPT
     };
 
     int16_t m_calXMin[2];
