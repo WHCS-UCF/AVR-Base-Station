@@ -50,7 +50,7 @@ static FILE mystdin;
 
 int main()
 {
-  // initialize timing (millis()) as the first call 
+  // initialize timing (millis) as the first call 
   timing_init();
   WHCSADC::init(); // this sets the ADC port as all inputs
   initUart();
@@ -61,7 +61,7 @@ int main()
   stdout = &mystdout;
   stdin = &mystdin;
 
-  printf("[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n");
+  printf_P(PSTR("[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n"));
 
   // show that we're powered up
   PIN_MODE_OUTPUT(STATUS_LED);
@@ -71,7 +71,7 @@ int main()
 
   lcd.begin();
   lcd.clearScreen();
-  lcd.screenOn();
+  lcd.fadeUp();
 
   // enable the HC-05
   PIN_MODE_OUTPUT(HC05_ENABLE);
@@ -93,6 +93,8 @@ int main()
   TouchCalibrate uiCalibrate(&tft, &touch);
   uiCalibrate.onCreate();
 
+  bool done = false;
+
   while(1)
   {
     unsigned long mainStart = millis();
@@ -104,6 +106,10 @@ int main()
 
     if(uiCalibrate.isDirty())
       uiCalibrate.draw();
+    else if(uiCalibrate.done() && !done) {
+      lcd.fadeDown();
+      done = true;
+    }
 
     TSPoint p = touch.getPoint();
     TouchEvent te;
@@ -142,9 +148,9 @@ int main()
 
     if(delta > maxLoopTime) {
       if(delta > MAIN_LOOP_WARNING)
-        printf("WARNING LIMIT: ");
+        printf_P(PSTR("WARNING LIMIT: "));
 
-      printf("Main loop max: %lums\n", delta);
+      printf_P(PSTR("Main loop max: %lums\n"), delta);
 
       maxLoopTime = delta;
     }
