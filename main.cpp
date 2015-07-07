@@ -17,26 +17,35 @@
 #include "pinout.h"
 #include "TouchCalibrate.h"
 #include "SoftSerial.h"
+#include "BlueTooth.h"
 
 #include "img/grant.h"
 #include "img/jimmy.h"
 #include "img/ucf.h"
 
-int uart_putchar(char c, FILE *stream) {
+RingBuffer uartRxBuffer, uartTxBuffer;
+
+/*int uart_putchar(char c, FILE *stream) {
   if (c == '\n')
     uart_putchar('\r', stream);
 
-  USART_SendByte(c);
+  //USART_SendByte(c);
+  if(UCSRA & _BV(UDRE))
+    UDR = c;
+  else {
+    while(uartTxBuffer.full());
+    uartTxBuffer.put(c);
+  }
 
   return 1;
-}
+}*/
 
-int uart_getchar(FILE *stream) {
+//*int uart_getchar(FILE *stream) {
   //loop_until_bit_is_set(UCSR0A, RXC0); /* Wait until data exists. */
   //return UDR0;
   //return 0;
-  return USART_ReceiveByte();
-}
+  //return USART_ReceiveByte();
+//}
 
 static FILE mylcdout;
 RF24 rf24(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
@@ -55,22 +64,54 @@ int lcd_putchar(char c, FILE *stream) {
 static FILE mystdout;
 static FILE mystdin;
 
+BlueTooth bluetooth(&uartRxBuffer, &uartTxBuffer);
+
+ISR(USART_RXC_vect)
+{
+  uartRxBuffer.put(UDR);
+}
+
+EMPTY_INTERRUPT(USART_TXC_vect);
+ISR(USART_UDRE_vect)
+{
+  if(uartTxBuffer.available())
+    UDR = uartTxBuffer.get();
+  else
+    disableTXInterrupts();
+}
+
+ISR(BADISR_vect)
+{
+  PIN_MODE_OUTPUT(STATUS_LED);
+  while(1) {
+    PIN_HIGH(STATUS_LED);
+    _delay_ms(500);
+    PIN_LOW(STATUS_LED);
+    _delay_ms(500);
+  }
+}
+
 int main()
 {
-  sei(); // enable interrupts early
-
   // initialize timing (millis) as the first call 
   timing_init();
   WHCSADC::init(); // this sets the ADC port as all inputs
   initUart();
+  enableRXInterrupts();
+  // this is causing an interrupt loop
+  // you MUST have UDR filled
+  enableTXInterrupts();
+
   soft_serial_init();
+  // Enable interrupts here for the software serial
+  sei();
 
   // setup STDIN/STDOUT for printf
   fdev_setup_stream(&mystdout, soft_serial_putc, NULL, _FDEV_SETUP_WRITE);
   fdev_setup_stream(&mylcdout, lcd_putchar, NULL, _FDEV_SETUP_WRITE);
-  fdev_setup_stream(&mystdin, NULL, uart_getchar, _FDEV_SETUP_READ);
+  //fdev_setup_stream(&mystdin, NULL, uart_getchar, _FDEV_SETUP_READ);
   stdout = &mystdout;
-  stdin = &mystdin;
+  //stdin = &mystdin;
 
   printf_P(PSTR("[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n"));
 
@@ -78,7 +119,7 @@ int main()
   PIN_MODE_OUTPUT(STATUS_LED);
   PIN_HIGH(STATUS_LED);
 
-  radio.begin();
+  //radio.begin();
 
   lcd.begin();
   lcd.clearScreen();
@@ -89,9 +130,6 @@ int main()
   PIN_HIGH(HC05_ENABLE);
 
   printf_P(PSTR("WHCS main loop starting\n"));
-
-  // Enable interrupts before entering main event loop
-  sei();
 
   time_t maxLoopTime = 0;
 
@@ -111,6 +149,23 @@ int main()
     unsigned long mainStart = millis();
 
     ///////////////////////////////////////
+
+    // pump the BlueTooth TX buffer
+    if(uartTxBuffer.available()) {
+      if(UCSRA & _BV(UDRE)) {
+        int c = uartTxBuffer.get();
+        UDR = c;
+        enableTXInterrupts();
+      }
+    }
+
+    uint8_t buf[10];
+    if(bluetooth.available()) {
+      size_t amt = bluetooth.read(buf, 10);
+      for(size_t i = 0; i < amt; i++) {
+        printf("%x ", buf[i]);
+      }
+    }
 
     lcd.tick();
     uiCalibrate.tick();

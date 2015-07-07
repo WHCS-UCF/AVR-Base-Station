@@ -7,6 +7,8 @@ SOURCES=main.cpp \
 	whcsgfx.cpp \
 	touchscreen.cpp \
 	TouchCalibrate.cpp \
+	BlueTooth.cpp \
+	RingBuffer.cpp \
 	fun.cpp
 
 LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/ \
