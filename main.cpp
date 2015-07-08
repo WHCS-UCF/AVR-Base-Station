@@ -19,6 +19,7 @@
 #include "SoftSerial.h"
 #include "BlueTooth.h"
 #include "UIManager.h"
+#include "ControlModule.h"
 
 #include "img/grant.h"
 #include "img/jimmy.h"
@@ -47,6 +48,14 @@ RingBuffer uartRxBuffer, uartTxBuffer;
   //return 0;
   //return USART_ReceiveByte();
 //}
+
+// Control Modules
+// door 0, light 1, sensor 2
+ControlModule cmDoor("Door", 0, ROLE_DC_SWITCH);
+ControlModule cmLight("Light", 1, ROLE_AC_SWITCH);
+ControlModule cmTemp("Temperature", 2, ROLE_TEMPERATURE);
+ControlModule * controlModules[] = {&cmDoor, &cmLight, &cmTemp, NULL};
+#define NUM_CONTROL_MODULES 3
 
 static FILE mylcdout;
 RF24 rf24(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
@@ -131,6 +140,10 @@ int main()
   bluetooth.begin();
   ui.begin();
 
+  for(int i = 0; i < NUM_CONTROL_MODULES; i++) {
+    controlModules[i]->printDetails();
+  }
+
   // start with calibration
   TouchCalibrate uiCalibrate(&tft, &touch);
   ui.setTopLevelUI(&uiCalibrate);
@@ -147,21 +160,26 @@ int main()
   bool firstLoop = true;
   bool btConnected = false;
 
+  uint8_t pktBuf[10];
+  uint8_t ptr = 0;
+
+  uint8_t pktOutBuf[10];
+  uint8_t pktOutSize = 0;
+  bool inPacket = false;
+
   while(1)
   {
     unsigned long mainStart = millis();
 
     ///////////////////////////////////////
 
-    if(bluetooth.isConnected())
-    {
+    if(bluetooth.isConnected()) {
       if(!btConnected || firstLoop) {
         printf("BlueTooth client connected!\n");
         btConnected = true;
       }
     }
-    else
-    {
+    else {
       if(btConnected || firstLoop) {
         printf("BlueTooth client disconnected!\n");
         btConnected = false;
@@ -177,18 +195,170 @@ int main()
       }
     }
 
+    // SUCCESS_WITH_RESULT
+    // ERROR_NO_RESULT
+    //
+    // GET_MODULE_STATUS - refid, opcode, cm
+    //   - response refid, SUCCSS/ERR, cm, RESULT
+    //   - 4 bytes with 1 byte status
+    //////////////////////
+    // SUCCESS_NO_RESULT
+    // ERROR_NO_RESULT
+    //
+    // TURN_ON_MODULE
+    // TURN_OFF_MODULE
+    //   - 3 bytes with opcode being status
+    //   - resp no result
+    //   public static final byte GET_STATUS_OF_BASE_STATION = 0x00;
+#define GET_MODULE_STATUS 0X01
+#define TURN_ON_MODULE 0x02
+#define TURN_OFF_MODULE 0x03
+#define TOGGLE_MODULE 0x04
+#define GET_CONTROL_MODULE_TYPE 0x05
+#define GET_DATA_COLLECTOR_DATA 0x06
+#define GET_NUMBER_OF_MODULES 0x07
+#define GET_CONTROL_MODULE_UID 0x08
+#define SET_UPDATE_INTERVAL 0x09
+#define QUERY_IF_BASE_STATION 0x0A
+#define SUCCESS_NO_RESULT 0x50
+#define SUCCESS_WITH_RESULT 0x51
+#define ERROR_NO_RESULT 0x52
+#define ERROR_WITH_RESULT 0x53
+
     uint8_t buf[10];
+
     if(bluetooth.available()) {
       size_t amt = bluetooth.read(buf, 3);
 
       printf("Recv %u byte(s): ", amt);
       for(size_t i = 0; i < amt; i++) {
-        printf("%x ", buf[i]);
+        uint8_t b = buf[i];
+        printf("%x ", b);
+
+        if(buf[i] == '\e') {
+          printf("Entering packet\n");
+          inPacket = true;
+          ptr = 0;
+        }
+        else
+        {
+          if(inPacket) {
+            radio_pkt radioPkt;
+            pktBuf[ptr] = b;
+
+            if(ptr == 2) {
+              uint8_t refId = pktBuf[0];
+              uint8_t opcode = pktBuf[1];
+              uint8_t cmTarget = pktBuf[2];
+
+              printf("\nREF[%d] OP[%d] CM[%d]\n",
+                  refId, opcode, cmTarget);
+
+              if(cmTarget > 2) {
+                printf("Bad control module %d\n", cmTarget);
+              }
+
+              ControlModule * cm = controlModules[cmTarget];
+              pktOutBuf[0] = '\e';
+
+              switch(opcode)
+              {
+                case QUERY_IF_BASE_STATION:
+                  printf("Query From BT\n");
+
+                  pktOutBuf[1] = refId;
+                  pktOutBuf[2] = QUERY_IF_BASE_STATION;
+                  pktOutBuf[3] = 4;
+                  pktOutSize = 4;
+                  break;
+                case GET_MODULE_STATUS:
+                  printf("GET_STATUS id %d\n", cmTarget);
+
+                  cm->printDetails();
+                  pktOutBuf[1] = refId;
+                  pktOutBuf[2] = SUCCESS_WITH_RESULT;
+                  pktOutBuf[3] = cmTarget;
+
+                  if(cm->getRole() == ROLE_AC_SWITCH)
+                    pktOutBuf[4] = cm->getACState();
+                  else if(cm->getRole() == ROLE_DC_SWITCH)
+                    pktOutBuf[4] = cm->getDCState();
+                  else if(cm->getRole() == ROLE_TEMPERATURE)
+                    pktOutBuf[4] = cm->getTemperature();
+
+                  pktOutSize = 5;
+                  break;
+                case TURN_ON_MODULE:
+                  printf("ON id %d\n", cmTarget);
+                  pktOutBuf[1] = refId;
+                  pktOutBuf[2] = SUCCESS_NO_RESULT;
+                  pktOutBuf[3] = cmTarget;
+                  pktOutSize = 4;
+
+                  radioPkt.data[1] = 'O';
+                  radioPkt.size = 1;
+
+                  if(radio.sendTo(cmTarget, &radioPkt)) {
+                    printf("Send ON command to CM\n");
+                    if(cm->getRole() == ROLE_AC_SWITCH)
+                      cm->setACState(STATE_ON);
+                    else if(cm->getRole() == ROLE_DC_SWITCH)
+                      cm->setDCState(STATE_ON);
+                  }
+                  else {
+                    printf("ON command failed\n");
+                  }
+
+                  for(int i = 0; i < radioPkt.size+1; i++)
+                    printf("%02x ", radioPkt.data[i]);
+                  break;
+                case TURN_OFF_MODULE:
+                  printf("OFF id %d\n", cmTarget);
+                  pktOutBuf[1] = refId;
+                  pktOutBuf[2] = SUCCESS_NO_RESULT;
+                  pktOutBuf[3] = cmTarget;
+                  pktOutSize = 4;
+
+                  radioPkt.data[1] = 'A';
+                  radioPkt.size = 1;
+
+                  if(radio.sendTo(cmTarget, &radioPkt)) {
+                    printf("Send OFF command to CM\n");
+
+                    if(cm->getRole() == ROLE_AC_SWITCH)
+                      cm->setACState(STATE_OFF);
+                    else if(cm->getRole() == ROLE_DC_SWITCH)
+                      cm->setDCState(STATE_OFF);
+                  }
+                  else {
+                    printf("OFF command failed\n");
+                  }
+                  break;
+                default:
+                  printf("Unrecognized opcode %02x\n", opcode);
+                  pktOutSize = 0;
+              }
+
+              if(pktOutSize > 0)
+                bluetooth.write(pktOutBuf, pktOutSize);
+
+              inPacket = false;
+            }
+
+            ptr++;
+          }
+          else
+          {
+            printf("IGN %02x\n", b);
+          }
+        }
       }
 
-      bluetooth.write(buf, amt);
+      //bluetooth.write(buf, amt);
       printf("\n");
     }
+
+
 
     ui.tick();
 
