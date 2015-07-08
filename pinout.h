@@ -23,7 +23,7 @@
   (pin_def ## _PORT ^= pin_def ## _MSK)
 
 #define PIN_READ(pin_def) \
-  ((pin_def ## _PIN & pin_def ## _MSK) >> pin_def ## _MSK)
+  ((pin_def ## _PIN & pin_def ## _MSK) >> pin_def ## _NUMBER)
 
 #include "pins.def.h"
 

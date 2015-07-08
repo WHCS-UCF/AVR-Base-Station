@@ -7,8 +7,9 @@
 #include "touchscreen.h"
 #include "TouchEvent.h"
 #include "Timer.h"
+#include "UIScene.h"
 
-class TouchCalibrate
+class TouchCalibrate : public UIScene
 {
   public:
     TouchCalibrate(Adafruit_TFTLCD * tft, TouchScreen * touch);
@@ -16,18 +17,13 @@ class TouchCalibrate
 
     void touchEvent(TouchEvent * ev); // called on a touch event
     void onCreate(); // called when scene first created
-    void end(); // ends the scene
+    void onDestroy();
     void tick(); 
     void draw();
-    bool isDirty();
-    bool done();
   private:
     bool checkCal();
 
     TouchScreen * m_touch;
-    Adafruit_TFTLCD * m_tft;
-    bool m_dirty;
-    bool m_done;
 
     Timer m_tReset;
     uint8_t m_secondsLeft;

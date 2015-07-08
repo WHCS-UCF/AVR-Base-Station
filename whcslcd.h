@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "Timer.h"
+#include <Adafruit_TFTLCD.h>
 
 class WHCSLCD
 {

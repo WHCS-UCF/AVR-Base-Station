@@ -1,5 +1,7 @@
 #include "BlueTooth.h"
 
+#include "pinout.h"
+
 /*struct pkt_bs_ident {
   uint8_t id[4];
 };
@@ -23,6 +25,16 @@ BlueTooth::BlueTooth(RingBuffer * rxBuffer, RingBuffer * txBuffer)
 {
 }
 
+void BlueTooth::begin()
+{
+  PIN_MODE_INPUT(HC05_STATUS);
+}
+
+bool BlueTooth::isConnected()
+{
+  return PIN_READ(HC05_STATUS);
+}
+
 size_t BlueTooth::available()
 {
   return m_rxBuffer->available();
@@ -30,7 +42,7 @@ size_t BlueTooth::available()
 
 size_t BlueTooth::read(uint8_t * buf, size_t amount)
 {
-  size_t i;
+  size_t i = 0;
 
   for(i = 0; i < amount; i++) {
     if(!m_rxBuffer->available())

@@ -18,6 +18,7 @@
 #include "TouchCalibrate.h"
 #include "SoftSerial.h"
 #include "BlueTooth.h"
+#include "UIManager.h"
 
 #include "img/grant.h"
 #include "img/jimmy.h"
@@ -54,6 +55,7 @@ Adafruit_TFTLCD tft(&mylcdout);
 WHCSLCD lcd(&tft, 3);
 WHCSGfx gfx(&tft);
 TouchScreen touch(300, 20); // rxplate, pressure threshold
+UIManager ui(&touch, &lcd);
 
 int lcd_putchar(char c, FILE *stream) {
   tft.write(c);
@@ -119,36 +121,52 @@ int main()
   PIN_MODE_OUTPUT(STATUS_LED);
   PIN_HIGH(STATUS_LED);
 
-  //radio.begin();
-
-  lcd.begin();
-  lcd.clearScreen();
-  lcd.fadeUp();
-
   // enable the HC-05
   PIN_MODE_OUTPUT(HC05_ENABLE);
   PIN_HIGH(HC05_ENABLE);
+  PIN_MODE_INPUT(HC05_STATUS);
+
+  // start up the components
+  radio.begin();
+  bluetooth.begin();
+  ui.begin();
+
+  // start with calibration
+  TouchCalibrate uiCalibrate(&tft, &touch);
+  ui.setTopLevelUI(&uiCalibrate);
 
   printf_P(PSTR("WHCS main loop starting\n"));
 
   time_t maxLoopTime = 0;
 
   // Main event loop
-  Timer evt;
-  evt.periodic(3000);
-
   int down = 0;
   TSPoint pLast;
-  TouchCalibrate uiCalibrate(&tft, &touch);
-  uiCalibrate.onCreate();
 
   bool done = false;
+  bool firstLoop = true;
+  bool btConnected = false;
 
   while(1)
   {
     unsigned long mainStart = millis();
 
     ///////////////////////////////////////
+
+    if(bluetooth.isConnected())
+    {
+      if(!btConnected || firstLoop) {
+        printf("BlueTooth client connected!\n");
+        btConnected = true;
+      }
+    }
+    else
+    {
+      if(btConnected || firstLoop) {
+        printf("BlueTooth client disconnected!\n");
+        btConnected = false;
+      }
+    }
 
     // pump the BlueTooth TX buffer
     if(uartTxBuffer.available()) {
@@ -161,52 +179,18 @@ int main()
 
     uint8_t buf[10];
     if(bluetooth.available()) {
-      size_t amt = bluetooth.read(buf, 10);
+      size_t amt = bluetooth.read(buf, 3);
+
+      printf("Recv %u byte(s): ", amt);
       for(size_t i = 0; i < amt; i++) {
         printf("%x ", buf[i]);
       }
+
+      bluetooth.write(buf, amt);
+      printf("\n");
     }
 
-    lcd.tick();
-    uiCalibrate.tick();
-
-    if(uiCalibrate.isDirty())
-      uiCalibrate.draw();
-    else if(uiCalibrate.done() && !done) {
-      lcd.fadeDown();
-      done = true;
-    }
-
-    TSPoint p = touch.getPoint();
-    TouchEvent te;
-
-    if(p.valid && p.z != 0)
-    {
-      if(!down) {
-        //printf("TOUCH_DOWN (%d, %d)\n", p.x, p.y);
-        te.point = p;
-        te.event = TouchEvent::TOUCH_DOWN;
-        uiCalibrate.touchEvent(&te);
-        down = 1;
-      }
-
-      //printf("z = %d\n", p.z);
-
-      //if(abs(p.x-pLast.x) > 2 || abs(p.y-pLast.y) > 2);
-        //printf("TOUCH_MOVE (%d, %d)\n", p.x, p.y);
-
-      pLast = p;
-    }
-    else if(p.valid && p.z == 0)
-    {
-      if(down) {
-        //printf("TOUCH_UP (%d, %d)\n", pLast.x, pLast.y);
-        te.point = p;
-        te.event = TouchEvent::TOUCH_UP;
-        uiCalibrate.touchEvent(&te);
-        down = 0;
-      }
-    }
+    ui.tick();
 
     ///////////////////////////////////////
 
@@ -220,6 +204,8 @@ int main()
 
       maxLoopTime = delta;
     }
+
+    firstLoop = false;
   }
 
   // main must not return

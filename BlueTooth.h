@@ -10,7 +10,9 @@ class BlueTooth
 {
 public:
   BlueTooth(RingBuffer * rxBuffer, RingBuffer * txBuffer);
+  void begin();
 
+  bool isConnected();
   size_t available();
   size_t read(uint8_t * buf, size_t amount);
   size_t putch(uint8_t c);

@@ -8,17 +8,18 @@
 //#define TOUCH_DEBUG
 
 TouchCalibrate::TouchCalibrate(Adafruit_TFTLCD * tft, TouchScreen * touch)
-  :m_tft(tft), m_touch(touch), m_dirty(true), m_state(0), m_done(false)
+  :UIScene(tft), m_touch(touch), m_state(0)
 {
 }
 
 void TouchCalibrate::reset()
 {
-  m_dirty = true;
+  queueRedraw();
   m_state = 0;
-  m_done = false;
   m_touch->useRawCoords();
   m_tft->fillScreen(COLOR_BLACK);
+
+  printf_P(PSTR("TouchCalibrate::reset()\n"));
 }
 
 void TouchCalibrate::touchEvent(TouchEvent * ev)
@@ -57,7 +58,7 @@ void TouchCalibrate::touchEvent(TouchEvent * ev)
 
   if(m_state < CAL_DONE) {
     m_state++;
-    m_dirty = true;
+    queueRedraw();
   }
   else
   {
@@ -87,14 +88,8 @@ void TouchCalibrate::onCreate()
   reset();
 }
 
-void TouchCalibrate::end()
+void TouchCalibrate::onDestroy()
 {
-  m_done = true;
-}
-
-bool TouchCalibrate::done()
-{
-  return m_done;
 }
 
 void TouchCalibrate::tick()
@@ -144,7 +139,7 @@ void TouchCalibrate::tick()
 
       m_state = CAL_ACCEPT;
       m_secondsLeft = 16;
-      m_dirty = true;
+      queueRedraw();
     }
     else
     {
@@ -158,7 +153,7 @@ void TouchCalibrate::tick()
   {
     if(m_tReset.update())
     {
-      m_dirty = true;
+      queueRedraw();
       m_secondsLeft--;
 
       if(m_secondsLeft <= 0)
@@ -235,12 +230,7 @@ void TouchCalibrate::draw()
     m_tft->printf("   \b\b%d", m_secondsLeft);
   }
 
-  m_dirty = false;
-}
-
-bool TouchCalibrate::isDirty()
-{
-  return m_dirty;
+  UIScene::draw();
 }
 
 ///////////////////////////////

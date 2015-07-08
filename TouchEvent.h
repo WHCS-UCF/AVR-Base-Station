@@ -1,6 +1,8 @@
 #ifndef TOUCHEVENT_H
 #define TOUCHEVENT_H
 
+#include "touchscreen.h"
+
 class TouchEvent
 {
 public:

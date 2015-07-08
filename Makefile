@@ -9,6 +9,8 @@ SOURCES=main.cpp \
 	TouchCalibrate.cpp \
 	BlueTooth.cpp \
 	RingBuffer.cpp \
+	UIManager.cpp \
+	UIScene.cpp \
 	fun.cpp
 
 LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/ \
