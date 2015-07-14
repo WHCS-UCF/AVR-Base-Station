@@ -25,29 +25,23 @@
 #include "img/jimmy.h"
 #include "img/ucf.h"
 
-RingBuffer uartRxBuffer, uartTxBuffer;
+///////////////////////////////////////
+// Function prototypes
+///////////////////////////////////////
 
-/*int uart_putchar(char c, FILE *stream) {
-  if (c == '\n')
-    uart_putchar('\r', stream);
+int lcd_putchar(char c, FILE *stream);
+void early_init();
+int main();
 
-  //USART_SendByte(c);
-  if(UCSRA & _BV(UDRE))
-    UDR = c;
-  else {
-    while(uartTxBuffer.full());
-    uartTxBuffer.put(c);
-  }
+///////////////////////////////////////
+// Global variables
+///////////////////////////////////////
 
-  return 1;
-}*/
-
-//*int uart_getchar(FILE *stream) {
-  //loop_until_bit_is_set(UCSR0A, RXC0); /* Wait until data exists. */
-  //return UDR0;
-  //return 0;
-  //return USART_ReceiveByte();
-//}
+// Misc
+#define MAIN_LOOP_WARNING 300 // 300ms maximum main loop time until warning
+// STDIO file handles for printf related functions
+static FILE gLocalStdout;
+static FILE gLocalLCDOut;
 
 // Control Modules
 // door 0, light 1, sensor 2
@@ -57,32 +51,30 @@ ControlModule cmTemp("Temperature", 2, ROLE_TEMPERATURE);
 ControlModule * controlModules[] = {&cmDoor, &cmLight, &cmTemp, NULL};
 #define NUM_CONTROL_MODULES 3
 
-static FILE mylcdout;
+// Subsystems and associated resources
+RingBuffer uartRxBuffer, uartTxBuffer;
 RF24 rf24(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
 Radio radio(&rf24, 0x41);
-Adafruit_TFTLCD tft(&mylcdout);
+Adafruit_TFTLCD tft(&gLocalLCDOut);
 WHCSLCD lcd(&tft, 3);
 WHCSGfx gfx(&tft);
 TouchScreen touch(300, 20); // rxplate, pressure threshold
 UIManager ui(&touch, &lcd);
-
-int lcd_putchar(char c, FILE *stream) {
-  tft.write(c);
-  return 1;
-}
-
-#define MAIN_LOOP_WARNING 300 // 300ms maximum main loop time until warning
-static FILE mystdout;
-static FILE mystdin;
-
 BlueTooth bluetooth(&uartRxBuffer, &uartTxBuffer);
 
+///////////////////////////////////////
+// Interrupt handlers
+///////////////////////////////////////
+
+// ISR to queue read bytes from the UART
 ISR(USART_RXC_vect)
 {
   uartRxBuffer.put(UDR);
 }
 
 EMPTY_INTERRUPT(USART_TXC_vect);
+
+// ISR to pump the TX out buffer
 ISR(USART_UDRE_vect)
 {
   if(uartTxBuffer.available())
@@ -91,9 +83,11 @@ ISR(USART_UDRE_vect)
     disableTXInterrupts();
 }
 
+// called instead of RESET (vect0) for a bad ISR
 ISR(BADISR_vect)
 {
   PIN_MODE_OUTPUT(STATUS_LED);
+
   while(1) {
     PIN_HIGH(STATUS_LED);
     _delay_ms(500);
@@ -102,38 +96,53 @@ ISR(BADISR_vect)
   }
 }
 
-int main()
+///////////////////////////////////////
+// Function definitions
+///////////////////////////////////////
+
+int lcd_putchar(char c, FILE *stream) {
+  tft.write(c);
+  return 1;
+}
+
+void early_init()
 {
   // initialize timing (millis) as the first call 
   timing_init();
-  WHCSADC::init(); // this sets the ADC port as all inputs
-  initUart();
-  enableRXInterrupts();
+  WHCSADC::init(); // warning: this sets the ADC port as all inputs
+
+  initUart(); // spin up the hardware USART
+  enableRXInterrupts(); // enable receive interrupts
   // this is causing an interrupt loop
   // you MUST have UDR filled
-  enableTXInterrupts();
+  // enableTXInterrupts(); // enable TX interrupts
 
+  // start the software serial library and interrupt timer
   soft_serial_init();
-  // Enable interrupts here for the software serial
-  sei();
 
-  // setup STDIN/STDOUT for printf
-  fdev_setup_stream(&mystdout, soft_serial_putc, NULL, _FDEV_SETUP_WRITE);
-  fdev_setup_stream(&mylcdout, lcd_putchar, NULL, _FDEV_SETUP_WRITE);
-  //fdev_setup_stream(&mystdin, NULL, uart_getchar, _FDEV_SETUP_READ);
-  stdout = &mystdout;
+  // set LIBC's primary stdout and stderr to soft serial
+  fdev_setup_stream(&gLocalStdout, soft_serial_putc, NULL, _FDEV_SETUP_WRITE);
+  stdout = &gLocalStdout;
+  stderr = &gLocalStdout;
+
+  // Hack to allow the Adafruit_GFX class to use printf
+  fdev_setup_stream(&gLocalLCDOut, lcd_putchar, NULL, _FDEV_SETUP_WRITE);
+
+  // STDIN disabled due to software serial not having RX on an interrupt pin
+  //fdev_setup_stream(&mystdin, NULL, soft_serial_getc, _FDEV_SETUP_READ);
   //stdin = &mystdin;
+}
 
-  printf_P(PSTR("[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n"));
+int main()
+{
+  early_init(); // bring up basic subsystems and timing
+  sei(); // start interrupts
+
+  printf_P(PSTR("\n[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n"));
 
   // show that we're powered up
   PIN_MODE_OUTPUT(STATUS_LED);
   PIN_HIGH(STATUS_LED);
-
-  // enable the HC-05
-  PIN_MODE_OUTPUT(HC05_ENABLE);
-  PIN_HIGH(HC05_ENABLE);
-  PIN_MODE_INPUT(HC05_STATUS);
 
   // start up the components
   radio.begin();
@@ -150,16 +159,6 @@ int main()
 
   printf_P(PSTR("WHCS main loop starting\n"));
 
-  time_t maxLoopTime = 0;
-
-  // Main event loop
-  int down = 0;
-  TSPoint pLast;
-
-  bool done = false;
-  bool firstLoop = true;
-  bool btConnected = false;
-
   uint8_t pktBuf[10];
   uint8_t ptr = 0;
 
@@ -167,33 +166,20 @@ int main()
   uint8_t pktOutSize = 0;
   bool inPacket = false;
 
+  // keep track of the worst case loop performance
+  time_t maxLoopTime = 0;
+
+  ///////////////////////////////////////
+  // BEGIN MAIN EVENT LOOP
+  ///////////////////////////////////////
+
   while(1)
   {
     unsigned long mainStart = millis();
 
     ///////////////////////////////////////
-
-    if(bluetooth.isConnected()) {
-      if(!btConnected || firstLoop) {
-        printf("BlueTooth client connected!\n");
-        btConnected = true;
-      }
-    }
-    else {
-      if(btConnected || firstLoop) {
-        printf("BlueTooth client disconnected!\n");
-        btConnected = false;
-      }
-    }
-
-    // pump the BlueTooth TX buffer
-    if(uartTxBuffer.available()) {
-      if(UCSRA & _BV(UDRE)) {
-        int c = uartTxBuffer.get();
-        UDR = c;
-        enableTXInterrupts();
-      }
-    }
+    // BEGIN MAIN LOOP TIMING
+    ///////////////////////////////////////
 
     // SUCCESS_WITH_RESULT
     // ERROR_NO_RESULT
@@ -354,28 +340,33 @@ int main()
         }
       }
 
-      //bluetooth.write(buf, amt);
       printf("\n");
     }
 
-
-
+    // Tick the UI "thread"
+    // This handles animations, UI scene lifecycle and rendering
     ui.tick();
+    bluetooth.tick();
 
+    ///////////////////////////////////////
+    // END MAIN LOOP TIMING
     ///////////////////////////////////////
 
     time_t delta = millis() - mainStart;
 
     if(delta > maxLoopTime) {
       if(delta > MAIN_LOOP_WARNING)
-        printf_P(PSTR("WARNING LIMIT: "));
+        printf_P(PSTR("WARNING LIMIT REACHED: "));
 
-      printf_P(PSTR("Main loop max: %lums\n"), delta);
+      printf_P(PSTR("Main loop max: %lums"), delta);
+
+      if(maxLoopTime > 0)
+        printf_P(PSTR(" (+%lums)\n"), delta-maxLoopTime);
+      else
+        printf("\n");
 
       maxLoopTime = delta;
     }
-
-    firstLoop = false;
   }
 
   // main must not return
