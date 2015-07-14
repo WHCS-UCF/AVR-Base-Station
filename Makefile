@@ -14,17 +14,11 @@ SOURCES=main.cpp \
 	ControlModule.cpp \
 	fun.cpp
 
-LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/ \
-	  lib/AVR-gfx-lib/ \
-	  lib/MEGA32A_SPI_LIBRARY/MEGA32A_SPI_LIBRARY/ \
-	  lib/WHCS_RF24/WHCS_RF24/ \
-	  common/
-
-INCLUDE=$(LIBRARIES)
-LIB_INCLUDE=$(LIBRARIES)
-
-# include any libraries
-LDFLAGS=-lcommon -lUART -lgfx -lRF24 -lSPI
+LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/libUART.a \
+	  lib/MEGA32A_SPI_LIBRARY/MEGA32A_SPI_LIBRARY/libSPI.a \
+	  lib/AVR-gfx-lib/libgfx.a \
+	  lib/WHCS_RF24/WHCS_RF24/libRF24.a \
+	  common/libcommon.a
 
 # chip and CPU speed information
 MCU=atmega32

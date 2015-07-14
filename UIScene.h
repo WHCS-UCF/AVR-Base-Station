@@ -18,9 +18,9 @@ class UIScene
     virtual void draw();
 
     void end(); // ends the scene
-    bool isDirty();
     bool queueRedraw();
-    bool done();
+    bool isDirty();
+    bool isDone();
   protected:
     Adafruit_TFTLCD * m_tft;
   private:

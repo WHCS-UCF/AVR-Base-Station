@@ -3,7 +3,10 @@
 
 #include "whcslcd.h"
 
+#define LCD_VISIBLE_THRESHOLD 30
+
 WHCSLCD::WHCSLCD(Adafruit_TFTLCD * lcd, uint8_t rotation)
+  :m_isFading(false)
 {
   m_lcd = lcd;
   m_rotation = rotation;
@@ -31,8 +34,6 @@ void WHCSLCD::begin()
 
   // allow the LCD to settle before turning it on
   _delay_ms(10);
-  fadeUp();
-  //screenOn();
 }
 
 void WHCSLCD::tick()
@@ -42,10 +43,7 @@ void WHCSLCD::tick()
     if(m_fadeDirection == FADE_UP)
     {
       if(m_brightness == 255)
-      {
-        m_isFading = false;
         screenOn();
-      }
       else 
       {
         m_brightness++;
@@ -55,10 +53,7 @@ void WHCSLCD::tick()
     else if(m_fadeDirection == FADE_DOWN)
     {
       if(m_brightness == 0)
-      {
-        m_isFading = false;
         screenOff();
-      }
       else 
       {
         m_brightness--;
@@ -75,17 +70,21 @@ void WHCSLCD::clearScreen()
 
 void WHCSLCD::screenOff()
 {
+  m_isFading = false;
+  m_brightness = 0;
   disableTimer();
   PIN_LOW(LCD_BACKLIGHT);
 }
 
 void WHCSLCD::screenOn()
 {
+  m_isFading = false;
+  m_brightness = 255;
   disableTimer();
   PIN_HIGH(LCD_BACKLIGHT);
 }
 
-void WHCSLCD::fadeUp()
+void WHCSLCD::screenFadeUp()
 {
   if(m_brightness == 255)
     return;
@@ -96,7 +95,7 @@ void WHCSLCD::fadeUp()
   enableTimer();
 }
 
-void WHCSLCD::fadeDown()
+void WHCSLCD::screenFadeDown()
 {
   if(m_brightness == 0)
     return;
@@ -105,6 +104,22 @@ void WHCSLCD::fadeDown()
   m_fadeDirection = FADE_DOWN;
   m_tFade.periodic(10);
   enableTimer();
+}
+
+bool WHCSLCD::isPoweringOn()
+{
+  return m_isFading && m_fadeDirection == FADE_UP;
+}
+
+bool WHCSLCD::isPoweringOff()
+{
+  return m_isFading && m_fadeDirection == FADE_DOWN;
+}
+
+
+bool WHCSLCD::isVisible()
+{
+  return m_brightness >= LCD_VISIBLE_THRESHOLD;
 }
 
 void WHCSLCD::enableTimer()

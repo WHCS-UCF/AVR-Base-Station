@@ -22,8 +22,11 @@ class WHCSLCD
     void setBrightness(uint8_t value);
     void screenOff();
     void screenOn();
-    void fadeUp();
-    void fadeDown();
+    void screenFadeUp();
+    void screenFadeDown();
+    bool isPoweringOn();
+    bool isPoweringOff();
+    bool isVisible();
   private:
     void enableTimer();
     void disableTimer();
@@ -37,7 +40,7 @@ class WHCSLCD
 
     // brightness fading
     uint8_t m_fadeDirection;
-    uint8_t m_isFading;
+    bool m_isFading;
 };
 
 #endif // WHCSLCD_H

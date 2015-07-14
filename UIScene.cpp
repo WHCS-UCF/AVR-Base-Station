@@ -36,7 +36,7 @@ bool UIScene::isDirty()
   return m_dirty;
 }
 
-bool UIScene::done()
+bool UIScene::isDone()
 {
   return m_done;
 }

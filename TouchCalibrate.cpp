@@ -94,9 +94,6 @@ void TouchCalibrate::onDestroy()
 
 void TouchCalibrate::tick()
 {
-  if(done())
-    return;
-
   if(m_state == CAL_DONE)
   {
     if(checkCal())

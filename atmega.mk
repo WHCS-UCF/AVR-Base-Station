@@ -42,6 +42,12 @@ endif
 export MCU
 
 # Process any additional include directories
+ifdef LIBRARIES
+INCLUDE += $(foreach i, $(LIBRARIES), $(dir $(i)))
+LIB_INCLUDE += $(foreach i, $(LIBRARIES), $(dir $(i)))
+LIBS = $(LIBRARIES)
+endif
+
 ifdef INCLUDE
 INCLUDE := $(foreach i, $(INCLUDE),-I$(i))
 endif
@@ -49,6 +55,11 @@ endif
 ifdef LIB_INCLUDE
 LIB_INCLUDE := $(foreach i, $(LIB_INCLUDE),-L$(i))
 endif
+
+#ifdef LINK_LIBS
+#LDFLAGS := $(foreach i, $(LINK_LIBS),-l$(i))
+#LIBS = $(foreach i, $(LINK_LIBS),lib$(i).a)
+#endif
 
 ifndef BUILD_DIR
 BUILD_DIR=build
@@ -68,6 +79,7 @@ SIZE := $(PREFIX)size
 AS := $(PREFIX)as
 CC := $(PREFIX)gcc
 CXX := $(PREFIX)g++
+LD := $(PREFIX)g++
 AVRDUDE := avrdude
 
 # Flags
@@ -88,9 +100,9 @@ DEPS := $(addprefix $(BUILD_DIR)/, $(notdir $(DEPS)))
 .PHONY: all libraries build-directory $(LIBRARIES) status clean size upload upload_spi
 
 ifdef LIBNAME
-all : build-directory lib$(LIBNAME).a
+all : build-directory $(LIBRARIES) lib$(LIBNAME).a
 else
-all : build-directory libraries $(PROGRAM).hex
+all : build-directory $(LIBRARIES) $(PROGRAM).hex
 endif
 
 build-directory : $(BUILD_DIR)
@@ -98,35 +110,56 @@ build-directory : $(BUILD_DIR)
 $(BUILD_DIR) :
 	@mkdir -vp $(BUILD_DIR)
 
-libraries : $(LIBRARIES)
+ifdef LIBRARIES
+define BUILD_LIB
+$T : $(dir $T)
+	@echo "building library $(basename $(notdir $T))..."
+	@$(MAKE) --no-print-directory -C $$< all
+endef
 
-$(LIBRARIES) :
-	@echo "building library $@..."
-	@$(MAKE) -C $@ all
-	@echo "library built"
+$(foreach T,$(LIBRARIES),$(eval $(BUILD_LIB)))
+endif
 
-$(PROGRAM).elf : $(OBJS)
-	@echo "LD $@"
-	@$(CXX) -o $@ $(OBJS) $(LDFLAGS)
-	@$(SIZE) $@
+##########################
 
-# only used when building a library
-lib$(LIBNAME).a : $(OBJS)
-	@echo "AR $@ $(OBJS)"
-	@$(AR) cr $@ $(OBJS)
+ifeq (,$(findstring clean, $(MAKECMDGOALS)))
+-include $(DEPS)
+endif
 
+# C files
 $(BUILD_DIR)/%.o: %.c
 	@echo "CC $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
+# C++ files
 $(BUILD_DIR)/%.o: %.cpp
 	@echo "CXX $<"
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# linking step
+$(PROGRAM).elf : $(DEPS) $(OBJS) $(LIBS)
+	@echo "LD $@"
+	@$(LD) -o $@ $(OBJS) $(LDFLAGS) $(LIBS)
+	@$(SIZE) $@
+
+# Build static library
+#
+# NOTE: there is "ar magic" going on here
+# This command makes use of thin archive, which will
+# flatten any added AR archive in to the newly created one.
+# This allows lower libraries to correctly order their dependencies
+# for building and to have that propagate up the tree
+lib$(LIBNAME).a : $(DEPS) $(OBJS) $(LIBRARIES)
+	@echo "AR $@ $(OBJS) $(foreach i,$(LIBRARIES),$(notdir $(i)))"
+	@$(AR) cTr $@ $(OBJS) $(LIBRARIES)
+
+
+# elf -> hex for programming
 %.hex: %.elf
 	@$(OBJCOPY) -j .text -j .data -O ihex $< $@
 	@echo "design ready to program with $@"
 
+# generate deps
 $(BUILD_DIR)/%.d : %.c
 	@echo "generating dependencies for $<"
 	@mkdir -p $(BUILD_DIR)
@@ -136,6 +169,8 @@ $(BUILD_DIR)/%.d : %.cpp
 	@echo "generating dependencies for $<"
 	@mkdir -p $(BUILD_DIR)
 	@$(CXX) $(DEPFLAGS) $< -MF"$@" -MT"$@ $(<:.cpp=.o)" ### generate dep for $<
+
+##########################
 
 upload : upload_spi
 
@@ -154,16 +189,11 @@ clean:
 	@rm -fv $(BUILD_DIR)/*.o
 	@rm -fv $(BUILD_DIR)/*.i
 	@rm -fv $(BUILD_DIR)/*.d
-	@-rmdir -v $(BUILD_DIR)
+	@-rmdir $(BUILD_DIR) 2>/dev/null
 	@rm -fv *.a
 ifdef LIBRARIES
 	@for i in $(LIBRARIES); do \
-	   echo "cleaning library $$i..."; \
-	   $(MAKE) -s -C $$i clean; \
-	   echo "library clean"; \
+	   echo "cleaning library $$(basename $$i)..."; \
+	   $(MAKE) -s -C $$(dirname $$i) clean; \
 	done
-endif
-
-ifeq (,$(findstring clean, $(MAKECMDGOALS)))
--include $(DEPS)
 endif

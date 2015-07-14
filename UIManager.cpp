@@ -3,31 +3,50 @@
 #include <stdio.h>
 #include <avr/pgmspace.h>
 
+#define SCREEN_TIMEOUT_MS 60000
+#undef DEBUG_POWER_MGMT
+#undef DEBUG_TOUCH
+
 UIManager::UIManager(TouchScreen * touch, WHCSLCD * lcd)
   :m_touch(touch), m_lcd(lcd), m_touchState(TouchEvent::TOUCH_UP)
  // start with the touch up
 {
-
+  m_powerMgmtEnabled = true;
+  m_ignoringEvents = false;
 }
 
 void UIManager::begin()
 {
   m_lcd->begin();
   m_lcd->clearScreen();
-  m_lcd->fadeUp();
+  powerUp(false);
 
-  printf_P(PSTR("UIManger: ready to display\n"));
+  m_tActivity.once(SCREEN_TIMEOUT_MS);
+
+  printf_P(PSTR("UIManager: ready to display\n"));
 }
 
 void UIManager::tick()
 {
-  TouchEvent te;
+  if(m_curScene && m_curScene->isDone())
+    setTopLevelUI(NULL);
 
-  if(getTouchEvent(&te)) {
-    if(m_curScene) // if we are managing a scene, dispatch touch event
-      m_curScene->touchEvent(&te);
+  tickTouch();
+
+  // handle activity timeout
+  if(activityTimedOut())
+  {
+    if(m_touchState == TouchEvent::TOUCH_UP)
+      powerDown(false);
     else
-      printf_P(PSTR("UIManager: WARN lost touch event\n"));
+    {
+      activityTick();
+
+#ifdef DEBUG_POWER_MGMT
+      printf_P(PSTR("UIManager: not sleeping due to down finger\n"));
+#endif
+    }
+
   }
 
   m_lcd->tick();
@@ -38,6 +57,102 @@ void UIManager::tick()
     if(m_curScene->isDirty())
       m_curScene->draw();
   }
+}
+
+void UIManager::tickTouch()
+{
+  TouchEvent te;
+
+  if(getTouchEvent(&te)) {
+    activityTick();
+
+    if(m_lcd->isVisible())
+    {
+      // stop an in progress power down quickly
+      if(m_lcd->isPoweringOff())
+        powerUp(true);
+
+      if(!m_ignoringEvents)
+      {
+        if(m_curScene) // if we are managing a scene, dispatch touch event
+          m_curScene->touchEvent(&te);
+        else
+          printf_P(PSTR("UIManager: lost event (no scene)\n"));
+      }
+      else
+      {
+#ifdef DEBUG_POWER_MGMT
+        printf_P(PSTR("UIManager: ignoring event as touch down not seen\n"));
+#endif
+      }
+    }
+    else
+    {
+      if(!m_ignoringEvents) 
+      {
+        powerUp(false);
+#ifdef DEBUG_POWER_MGMT
+        printf_P(PSTR("UIManager: ignored touch down\n"));
+#endif
+      }
+
+      m_ignoringEvents = true;
+    }
+
+    if(m_ignoringEvents && te.event == TouchEvent::TOUCH_UP)
+      m_ignoringEvents = false;
+  }
+}
+
+void UIManager::activityTick()
+{
+  if(!m_powerMgmtEnabled)
+    return;
+
+  m_tActivity.restart();
+}
+
+bool UIManager::activityTimedOut()
+{
+  if(!m_powerMgmtEnabled)
+    return false;
+
+  //printf("Calling activity timed out\n");
+  //printf("Timer addr 0x%0x\n", m_tActivity);
+  bool test = m_tActivity.update();
+  //printf("Done\n");
+
+  return test;
+}
+
+void UIManager::powerDown(bool fast)
+{
+  if(!m_powerMgmtEnabled)
+    return;
+
+  if(fast)
+    m_lcd->screenOff();
+  else
+    m_lcd->screenFadeDown();
+
+#ifdef DEBUG_POWER_MGMT
+    printf_P(PSTR("UIManager: sleeping\n"));
+#endif
+}
+
+void UIManager::powerUp(bool fast)
+{
+  if(!m_powerMgmtEnabled)
+    return;
+
+  if(fast)
+    m_lcd->screenOn();
+  else
+    m_lcd->screenFadeUp();
+
+#ifdef DEBUG_POWER_MGMT
+    printf_P(PSTR("UIManager: waking up\n"));
+#endif
 }
 
 bool UIManager::needsCalibration()
@@ -56,7 +171,10 @@ bool UIManager::getTouchEvent(TouchEvent * te)
   if(p.valid && p.z != 0)
   {
     if(m_touchState == TouchEvent::TOUCH_UP) {
-      //printf("TOUCH_DOWN (%d, %d)\n", p.x, p.y);
+#ifdef DEBUG_TOUCH
+      printf_P(PSTR("UIManager: TOUCH_DOWN (%d, %d)\n"), p.x, p.y);
+#endif
+
       te->point = p;
       te->event = TouchEvent::TOUCH_DOWN;
       m_touchState = te->event;
@@ -72,7 +190,10 @@ bool UIManager::getTouchEvent(TouchEvent * te)
   else if(p.valid && p.z == 0)
   {
     if(m_touchState == TouchEvent::TOUCH_DOWN) {
-      //printf("TOUCH_UP (%d, %d)\n", pLast.x, pLast.y);
+#ifdef DEBUG_TOUCH
+      printf_P(PSTR("UIManager: TOUCH_UP (%d, %d)\n"), p.x, p.y);
+#endif
+
       te->point = p;
       te->event = TouchEvent::TOUCH_UP;
       m_touchState = te->event;
@@ -86,21 +207,23 @@ bool UIManager::getTouchEvent(TouchEvent * te)
 
 void UIManager::setTopLevelUI(UIScene * scene)
 {
-  if(!scene)
-    return;
-
   if(m_curScene != NULL) {
-    // TODO: check to see if the scene had ended yet
-    if(!m_curScene->done()) {
+    if(!m_curScene->isDone()) {
       printf_P(PSTR("UIManager: WARN scene transition without end\n"));
     }
 
     printf_P(PSTR("UIManager: calling onDestroy()\n"));
     m_curScene->onDestroy();
+
+    // XXX: remove this
+    m_lcd->clearScreen();
   }
 
+  if(scene)
+  {
+    printf_P(PSTR("UIManager: calling onCreate()\n"));
+    scene->onCreate();
+  }
 
-  printf_P(PSTR("UIManager: calling onCreate()\n"));
-  scene->onCreate();
   m_curScene = scene;
 }

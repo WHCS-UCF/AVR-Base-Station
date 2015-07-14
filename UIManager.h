@@ -14,9 +14,18 @@ public:
 
   void tick();
   bool needsCalibration();
-  bool getTouchEvent(TouchEvent * ev);
   void setTopLevelUI(UIScene * scene);
 private:
+  void tickTouch();
+
+  bool getTouchEvent(TouchEvent * ev);
+
+  // power management
+  void activityTick();
+  bool activityTimedOut();
+  void powerDown(bool fast);
+  void powerUp(bool fast);
+
   // components
   TouchScreen * m_touch;
   WHCSLCD * m_lcd;
@@ -24,6 +33,9 @@ private:
   // state
   UIScene * m_curScene;
   uint8_t m_touchState;
+  bool m_powerMgmtEnabled;
+  bool m_ignoringEvents;
+  Timer m_tActivity;
 };
 
 #endif // UIMANAGER_H
