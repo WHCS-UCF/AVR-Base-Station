@@ -8,11 +8,12 @@
 #include "TouchEvent.h"
 #include "Timer.h"
 #include "UIScene.h"
+#include "UIButton.h"
 
 class TouchCalibrate : public UIScene
 {
   public:
-    TouchCalibrate(Adafruit_TFTLCD * tft, TouchScreen * touch);
+    TouchCalibrate(WHCSGfx * gfx, TouchScreen * touch);
     void reset();
 
     void touchEvent(TouchEvent * ev); // called on a touch event
@@ -20,14 +21,18 @@ class TouchCalibrate : public UIScene
     void onDestroy();
     void tick(); 
     void draw();
+    void setCalibration(int16_t xMin, int16_t xMax, int16_t yMin, int16_t yMax);
   private:
     bool checkCal();
 
     TouchScreen * m_touch;
+    UIButton m_vAcceptButton;
+    UIButton m_vResetButton;
 
     Timer m_tReset;
     uint8_t m_secondsLeft;
     uint8_t m_state;
+    bool m_newState;
     enum cal_state {
       CAL_TL = 0,
       CAL_TR,

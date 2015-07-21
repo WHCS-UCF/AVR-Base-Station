@@ -3,41 +3,48 @@
 #include <stdio.h>
 #include "whcsgfx.h"
 #include "common.h"
+#include "eeprom.h"
 
 #define TOLERANCE 10
-//#define TOUCH_DEBUG
+#undef DEBUG_CAL
 
-TouchCalibrate::TouchCalibrate(Adafruit_TFTLCD * tft, TouchScreen * touch)
-  :UIScene(tft), m_touch(touch), m_state(0)
+TouchCalibrate::TouchCalibrate(WHCSGfx * gfx, TouchScreen * touch)
+  :UIScene(gfx), m_newState(false), m_touch(touch), m_state(0), m_vAcceptButton(gfx), m_vResetButton(gfx)
 {
 }
 
 void TouchCalibrate::reset()
 {
-  queueRedraw();
   m_state = 0;
+  m_newState = true;
   m_touch->useRawCoords();
-  m_tft->fillScreen(COLOR_BLACK);
+  m_gfx->clearScreen(COLOR_BLACK);
 
+#ifdef DEBUG_CAL
   printf_P(PSTR("TouchCalibrate::reset()\n"));
+#endif
+
+  queueRedraw();
 }
 
 void TouchCalibrate::touchEvent(TouchEvent * ev)
 {
-  if(ev->event != TouchEvent::TOUCH_DOWN)
-    return;
-
-  // based off of the rotation of the LCD, we need to adjust
-  // our orientation
-  if(m_tft->getRotation() % 2 == 1) {
-    int16_t tmp = ev->point.x;
-    ev->point.x = ev->point.y;
-    ev->point.y = tmp;
+  if(m_vAcceptButton.isDrawn() && m_vAcceptButton.within(ev->point.x, ev->point.y))
+  {
+    end();
+    queueRedraw();
+    return m_vAcceptButton.touchEvent(ev);
   }
 
-#ifdef TOUCH_DEBUG
-  printf("TOUCH_DOWN (%d, %d)\n", ev->point.x, ev->point.y);
-#endif
+  if(m_vResetButton.isDrawn() && m_vResetButton.within(ev->point.x, ev->point.y))
+  {
+    reset();
+    queueRedraw();
+    return m_vResetButton.touchEvent(ev);
+  }
+
+  if(ev->event != TouchEvent::TOUCH_DOWN)
+    return;
 
   if(m_state == CAL_TL) {
     m_calXMin[0] = ev->point.x;
@@ -58,33 +65,25 @@ void TouchCalibrate::touchEvent(TouchEvent * ev)
 
   if(m_state < CAL_DONE) {
     m_state++;
+    m_newState = true;
     queueRedraw();
   }
   else
   {
-    bool hit = true;
-
-    // super hax to detect touch in buttons
-    if(ev->point.y >= m_tft->height()-60 && ev->point.y <= m_tft->height()-35)
-    {
-      if(ev->point.x >= 50 && ev->point.x <= 150)
-        end();
-      else if(ev->point.x >= 160 && ev->point.x <= 260) {
-        reset();
-      }
-      else
-        hit = false;
-    }
-    else
-      hit = false;
-
-    if(!hit)
-      m_tft->drawPixel(ev->point.x, ev->point.y, COLOR_WHITE);
+    m_gfx->pixel(ev->point.x, ev->point.y, COLOR_WHITE);
   }
 }
 
 void TouchCalibrate::onCreate()
 {
+  m_vAcceptButton.useBorders(true);
+  m_vAcceptButton.setBounds(50, m_gfx->height()-60, 100, 25);
+  m_vAcceptButton.setLabel("Accept");
+
+  m_vResetButton.useBorders(true);
+  m_vResetButton.setBounds(160, m_gfx->height()-60, 100, 25);
+  m_vResetButton.setLabel("Reset");
+
   reset();
 }
 
@@ -103,44 +102,31 @@ void TouchCalibrate::tick()
 
       int yMin = (m_calYMin[0]+m_calYMin[1])/2;
       int yMax = (m_calYMax[0]+m_calYMax[1])/2;
-#ifdef TOUCH_DEBUG
+#ifdef DEBUG_CAL
       printf("Display calibrated: Xmin %d, XMax %d, Ymin %d, Ymax %d\n",
           xMin, xMax, yMin, yMax);
 #endif
 
-      int16_t w = m_tft->width();
-      int16_t h = m_tft->height();
-
-      if(m_tft->getRotation() % 2 == 1) {
-        int16_t tmp = w;
-        w = h;
-        h = tmp;
-
-        tmp = yMin;
-        yMin = xMin;
-        xMin = tmp;
-
-        tmp = yMax;
-        yMax = xMax;
-        xMax = tmp;
-      }
-
-      m_touch->setCalibration(w, h,
-          xMin, xMax, yMin, yMax);
-      m_touch->useScreenCoords();
+      // save and set calibration
+      EEPROM::saveCalibration(xMin, xMax, yMin, yMax);
+      setCalibration(xMin, xMax, yMin, yMax);
 
       // start a timer to reset the calibration if the user doesn't
       // accept after a certain amount of time
       // this is assuming that the user is unable to accept
       m_tReset.periodic(1000);
 
+      m_newState = true;
       m_state = CAL_ACCEPT;
       m_secondsLeft = 16;
+
+      m_vAcceptButton.queueDraw();
+      m_vResetButton.queueDraw();
       queueRedraw();
     }
     else
     {
-#ifdef TOUCH_DEBUG
+#ifdef DEBUG_CAL
       printf("Calibration failed\n");
 #endif
       reset();
@@ -161,9 +147,13 @@ void TouchCalibrate::tick()
 
 void TouchCalibrate::draw()
 {
+  if(m_vAcceptButton.needsDraw())
+    m_vAcceptButton.draw();
+  if(m_vResetButton.needsDraw())
+    m_vResetButton.draw();
 
-  int16_t squareTableX[4] = {0, m_tft->width()-10, m_tft->width()-10, 0};
-  int16_t squareTableY[4] = {0, 0, m_tft->height()-10, m_tft->height()-10};
+  int16_t squareTableX[4] = {0, m_gfx->width()-10, m_gfx->width()-10, 0};
+  int16_t squareTableY[4] = {0, 0, m_gfx->height()-10, m_gfx->height()-10};
 
   for(int i = 0; i < 4; i++) {
     uint16_t color;
@@ -175,66 +165,90 @@ void TouchCalibrate::draw()
     else
       color = COLOR_RED;
 
-    m_tft->fillRect(squareTableX[i], squareTableY[i], 10, 10, color);
+    m_gfx->fillRect(squareTableX[i], squareTableY[i], 10, 10, color);
   }
 
-  m_tft->setTextSize(2);
+  m_gfx->textSize(2);
 
   if(m_state < CAL_DONE)
   {
-    m_tft->setCursor(20, m_tft->height()/2-20);
-    m_tft->setTextColor(COLOR_WHITE);
-    m_tft->println("Touchscreen Calibration\n");
+    m_gfx->cursor(20, m_gfx->height()/2-20);
+    m_gfx->textColor(COLOR_WHITE);
+    m_gfx->puts("Touchscreen Calibration\n");
 
     // clear the text area
-    m_tft->fillRect(0, m_tft->height()/2, m_tft->width(), 30, COLOR_BLACK);
-    m_tft->setCursor(35, m_tft->height()/2);
-    m_tft->println("Touch the ");
-    m_tft->setTextColor(COLOR_RED);
+    m_gfx->fillRect(0, m_gfx->height()/2, m_gfx->width(), 30, COLOR_BLACK);
+    m_gfx->cursor(35, m_gfx->height()/2);
+    m_gfx->puts("Touch the ");
+    m_gfx->textColor(COLOR_RED);
 
     if(m_state == CAL_TL)
-      m_tft->println("top-left");
+      m_gfx->puts("top-left");
     else if(m_state == CAL_TR)
-      m_tft->println("top-right");
+      m_gfx->puts("top-right");
     else if(m_state == CAL_BR)
-      m_tft->println("bottom-right");
+      m_gfx->puts("bottom-right");
     else if(m_state == CAL_BL)
-      m_tft->println("bottom-left");
+      m_gfx->puts("bottom-left");
   }
   else
   {
-    m_tft->setCursor(35, m_tft->height()/2-20);
-    m_tft->setTextColor(COLOR_GREEN);
-    m_tft->fillRect(20, m_tft->height()/2-20, m_tft->width(), 70, COLOR_BLACK);
-    m_tft->println("Calibration Complete");
+    m_gfx->cursor(35, m_gfx->height()/2-20);
+    m_gfx->textColor(COLOR_GREEN);
+    m_gfx->fillRect(20, m_gfx->height()/2-20, m_gfx->width(), 70, COLOR_BLACK);
+    m_gfx->puts("Calibration Complete");
 
-    m_tft->drawRect(50, m_tft->height()-60, 100, 25, COLOR_GREEN);
-    m_tft->setCursor(65, m_tft->height()-55);
-    m_tft->println("Accept");
+    //m_gfx->drawBorder(50, m_gfx->height()-60, 100, 25, COLOR_GREEN);
+    //m_gfx->cursor(65, m_gfx->height()-55);
+    //m_gfx->puts("Accept");
 
-    m_tft->drawRect(160, m_tft->height()-60, 100, 25, COLOR_RED);
-    m_tft->setCursor(65+100+15, m_tft->height()-55);
-    m_tft->setTextColor(COLOR_RED);
-    m_tft->println("Reset");
+    //m_gfx->drawBorder(160, m_gfx->height()-60, 100, 25, COLOR_RED);
+    //m_gfx->cursor(65+100+15, m_gfx->height()-55);
+    //m_gfx->textColor(COLOR_RED);
+    //m_gfx->puts("Reset");
   }
 
   if(m_state == CAL_ACCEPT)
   {
     //m_secondsLeft
-    m_tft->setCursor(55, m_tft->height()-90);
-    m_tft->setTextColor(COLOR_WHITE);
-    m_tft->println("Reverting in");
-    m_tft->printf("   \b\b%d", m_secondsLeft);
+    m_gfx->cursor(55, m_gfx->height()-90);
+    m_gfx->textColor(COLOR_WHITE);
+    m_gfx->puts("Reverting in");
+    //m_gfx->printf("   \b\b%d", m_secondsLeft);
   }
 
   UIScene::draw();
+}
+
+void TouchCalibrate::setCalibration(int16_t xMin, int16_t xMax, int16_t yMin, int16_t yMax)
+{
+  int16_t w = m_gfx->width();
+  int16_t h = m_gfx->height();
+
+  if(m_gfx->getRotation() % 2 == 1) {
+    int16_t tmp = w;
+    w = h;
+    h = tmp;
+
+    tmp = yMin;
+    yMin = xMin;
+    xMin = tmp;
+
+    tmp = yMax;
+    yMax = xMax;
+    xMax = tmp;
+  }
+
+  m_touch->setCalibration(w, h,
+      xMin, xMax, yMin, yMax);
+  m_touch->useScreenCoords();
 }
 
 ///////////////////////////////
 
 bool TouchCalibrate::checkCal()
 {
-#ifdef TOUCH_DEBUG
+#ifdef DEBUG_CAL
   printf("%d ", abs(m_calXMin[0] - m_calXMin[1]));
   printf("%d ", abs(m_calXMax[0] - m_calXMax[1]));
   printf("%d ", abs(m_calYMin[0] - m_calYMin[1]));

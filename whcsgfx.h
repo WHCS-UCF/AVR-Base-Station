@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 #include <avr/pgmspace.h>
+#include <Adafruit_TFTLCD.h>
+
+typedef uint16_t color_t;
+typedef int16_t coord_t;
+struct point { coord_t x, y; };
+struct rect { coord_t x, y; coord_t w, h; };
 
 // Color definitions
 #define COLOR_BLACK       0x0000      /*   0,   0,   0 */
@@ -31,8 +37,26 @@ class WHCSGfx
   public:
     WHCSGfx(Adafruit_TFTLCD * lcd);
     void drawAsciiArt(int16_t x, int16_t y, const PROGMEM uint8_t * array, size_t size, uint16_t baseColor);
+    void drawBorder(rect bounds, color_t color);
+
+    coord_t width();
+    coord_t height();
+    void pixel(coord_t x, coord_t y, color_t color);
+    void pixel(point xy, color_t color);
+
+    void fillRect(coord_t x, coord_t y, coord_t w, coord_t h, color_t color);
+    void fillRect(rect bounds, color_t color);
+    void clearScreen(color_t color);
+    void clearRect(rect bounds, color_t color);
+    void cursor(coord_t x, coord_t y);
+    uint8_t getRotation();
+
+    // Text operations
+    void textColor(color_t color);
+    void textSize(uint8_t s);
+    void puts(const char * str);
   private:
-    Adafruit_TFTLCD * m_lcd;
+    Adafruit_TFTLCD * m_tft;
 };
 
 #endif // WHCSGFX_H

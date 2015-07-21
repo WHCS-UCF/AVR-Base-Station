@@ -2,12 +2,12 @@
 #define UISCENE_H
 
 #include "TouchEvent.h"
-#include <Adafruit_TFTLCD.h>
+#include "whcsgfx.h"
 
 class UIScene
 {
   public:
-    UIScene(Adafruit_TFTLCD * tft);
+    UIScene(WHCSGfx * gfx);
 
     virtual void touchEvent(TouchEvent * ev); // called on a touch event
     virtual void onCreate() = 0; // called when scene first created
@@ -22,7 +22,7 @@ class UIScene
     bool isDirty();
     bool isDone();
   protected:
-    Adafruit_TFTLCD * m_tft;
+    WHCSGfx * m_gfx;
   private:
     bool m_dirty;
     bool m_done;

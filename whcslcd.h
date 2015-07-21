@@ -27,6 +27,8 @@ class WHCSLCD
     bool isPoweringOn();
     bool isPoweringOff();
     bool isVisible();
+
+    Adafruit_TFTLCD * getGfx();
   private:
     void enableTimer();
     void disableTimer();

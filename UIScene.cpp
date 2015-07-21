@@ -1,7 +1,7 @@
 #include "UIScene.h"
 
-UIScene::UIScene(Adafruit_TFTLCD * tft)
-  :m_tft(tft), m_dirty(true), m_done(false)
+UIScene::UIScene(WHCSGfx * gfx)
+  :m_gfx(gfx), m_dirty(true), m_done(false)
 {
 
 }

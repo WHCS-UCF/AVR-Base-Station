@@ -19,7 +19,10 @@
 #include "SoftSerial.h"
 #include "BlueTooth.h"
 #include "UIManager.h"
+#include "UIMain.h"
+#include "eeprom.h"
 #include "ControlModule.h"
+#include "util.h"
 
 #include "img/grant.h"
 #include "img/jimmy.h"
@@ -62,6 +65,10 @@ TouchScreen touch(300, 20); // rxplate, pressure threshold
 UIManager ui(&touch, &lcd);
 BlueTooth bluetooth(&uartRxBuffer, &uartTxBuffer);
 
+// UI scenes
+TouchCalibrate uiCalibrate(&gfx, &touch);
+UIMain uiMain(&gfx);
+
 ///////////////////////////////////////
 // Interrupt handlers
 ///////////////////////////////////////
@@ -99,6 +106,17 @@ ISR(BADISR_vect)
 ///////////////////////////////////////
 // Function definitions
 ///////////////////////////////////////
+
+static inline int FreeRAM() {
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+}
+
+static inline int TotalRAM() {
+  extern char *__data_start; 
+  return (int)(RAMEND - (int)&__data_start + 1);
+}
 
 int lcd_putchar(char c, FILE *stream) {
   tft.write(c);
@@ -139,6 +157,7 @@ int main()
   sei(); // start interrupts
 
   printf_P(PSTR("\n[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n"));
+  printf_P(PSTR("Starting subsystems...\n"));
 
   // show that we're powered up
   PIN_MODE_OUTPUT(STATUS_LED);
@@ -153,11 +172,24 @@ int main()
     controlModules[i]->printDetails();
   }
 
-  // start with calibration
-  TouchCalibrate uiCalibrate(&tft, &touch);
-  ui.setTopLevelUI(&uiCalibrate);
+  bool forceCalibration = false;
+  if(!EEPROM::hasCalibration() || forceCalibration)
+  {
+    ui.pushUI(&uiMain);
+    ui.pushUI(&uiCalibrate);
+  }
+  else
+  {
+    int16_t xMin, xMax, yMin, yMax;
+    EEPROM::loadCalibration(&xMin, &xMax, &yMin, &yMax);
+    uiCalibrate.setCalibration(xMin, xMax, yMin, yMax);
+
+    ui.pushUI(&uiMain);
+  }
 
   printf_P(PSTR("WHCS main loop starting\n"));
+  printf_P(PSTR("Free RAM %d/%d bytes\n\n"), FreeRAM(), TotalRAM());
+  //printf_P(PSTR("Stack watermark: %u\n"), StackCount());
 
   uint8_t pktBuf[10];
   uint8_t ptr = 0;
@@ -321,7 +353,7 @@ int main()
                   }
                   break;
                 default:
-                  printf("Unrecognized opcode %02x\n", opcode);
+                  printf("UnkOP %02x\n", opcode);
                   pktOutSize = 0;
               }
 
@@ -335,7 +367,7 @@ int main()
           }
           else
           {
-            printf("IGN %02x\n", b);
+            printf("[%02x]", b);
           }
         }
       }
@@ -363,8 +395,9 @@ int main()
       if(maxLoopTime > 0)
         printf_P(PSTR(" (+%lums)\n"), delta-maxLoopTime);
       else
-        printf("\n");
+        printf_P(PSTR("\n"));
 
+      //printf_P(PSTR("Stack watermark: %u\n"), StackCount());
       maxLoopTime = delta;
     }
   }

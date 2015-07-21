@@ -122,6 +122,11 @@ bool WHCSLCD::isVisible()
   return m_brightness >= LCD_VISIBLE_THRESHOLD;
 }
 
+Adafruit_TFTLCD * WHCSLCD::getGfx()
+{
+  return m_lcd;
+}
+
 void WHCSLCD::enableTimer()
 {
   // Used to provide PWM output for the screen brightness

@@ -14,7 +14,8 @@ public:
 
   void tick();
   bool needsCalibration();
-  void setTopLevelUI(UIScene * scene);
+  void pushUI(UIScene * scene);
+  void popUI();
 private:
   void tickTouch();
 
@@ -32,7 +33,12 @@ private:
 
   // state
   UIScene * m_curScene;
+  UIScene * m_sceneStack[4];
+  int8_t m_curScenePos;
+#define MAX_SCENES (sizeof(m_sceneStack)/sizeof(*m_sceneStack))
+
   uint8_t m_touchState;
+  TouchEvent m_lastTouchEvent;
   bool m_powerMgmtEnabled;
   bool m_ignoringEvents;
   Timer m_tActivity;

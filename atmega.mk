@@ -161,12 +161,12 @@ lib$(LIBNAME).a : $(DEPS) $(OBJS) $(LIBRARIES)
 
 # generate deps
 $(BUILD_DIR)/%.d : %.c
-	@echo "generating dependencies for $<"
+	@echo "CCDEP $<"
 	@mkdir -p $(BUILD_DIR)
 	@$(CC) $(DEPFLAGS) $< -MF"$@" -MT"$@ $(<:.c=.o)" ### generate dep for $<
 
 $(BUILD_DIR)/%.d : %.cpp
-	@echo "generating dependencies for $<"
+	@echo "CXXDEP $<"
 	@mkdir -p $(BUILD_DIR)
 	@$(CXX) $(DEPFLAGS) $< -MF"$@" -MT"$@ $(<:.cpp=.o)" ### generate dep for $<
 

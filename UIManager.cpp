@@ -5,7 +5,7 @@
 
 #define SCREEN_TIMEOUT_MS 60000
 #undef DEBUG_POWER_MGMT
-#undef DEBUG_TOUCH
+#define DEBUG_TOUCH
 
 UIManager::UIManager(TouchScreen * touch, WHCSLCD * lcd)
   :m_touch(touch), m_lcd(lcd), m_touchState(TouchEvent::TOUCH_UP)
@@ -13,6 +13,11 @@ UIManager::UIManager(TouchScreen * touch, WHCSLCD * lcd)
 {
   m_powerMgmtEnabled = true;
   m_ignoringEvents = false;
+  m_curScene = NULL;
+  m_curScenePos = -1;
+
+  for(int i = 0; i < MAX_SCENES; i++)
+    m_sceneStack[i] = NULL;
 }
 
 void UIManager::begin()
@@ -29,7 +34,7 @@ void UIManager::begin()
 void UIManager::tick()
 {
   if(m_curScene && m_curScene->isDone())
-    setTopLevelUI(NULL);
+    popUI();
 
   tickTouch();
 
@@ -168,6 +173,17 @@ bool UIManager::getTouchEvent(TouchEvent * te)
   TSPoint p = m_touch->getPoint();
   bool result = false;
 
+  if(p.valid)
+  {
+    // based off of the rotation of the LCD, we need to adjust
+    // our orientation
+    if(m_lcd->getGfx()->getRotation() % 2 == 1) {
+      int16_t tmp = p.x;
+      p.x = p.y;
+      p.y = tmp;
+    }
+  }
+
   if(p.valid && p.z != 0)
   {
     if(m_touchState == TouchEvent::TOUCH_UP) {
@@ -179,51 +195,82 @@ bool UIManager::getTouchEvent(TouchEvent * te)
       te->event = TouchEvent::TOUCH_DOWN;
       m_touchState = te->event;
       result = true;
-      //m_lastTouchEvent = *ev;
+      m_lastTouchEvent.event = TouchEvent::TOUCH_DOWN;
     }
 
     //printf("z = %d\n", p.z);
 
     //if(abs(p.x-pLast.x) > 2 || abs(p.y-pLast.y) > 2);
       //printf("TOUCH_MOVE (%d, %d)\n", p.x, p.y);
+
+    // might be expensive if happening a lot
+    m_lastTouchEvent.point = p;
   }
-  else if(p.valid && p.z == 0)
+  else if(p.valid && p.z == 0) // touch data not reliable, use last TOUCH_MOVE
   {
     if(m_touchState == TouchEvent::TOUCH_DOWN) {
-#ifdef DEBUG_TOUCH
-      printf_P(PSTR("UIManager: TOUCH_UP (%d, %d)\n"), p.x, p.y);
-#endif
 
-      te->point = p;
-      te->event = TouchEvent::TOUCH_UP;
-      m_touchState = te->event;
+      m_lastTouchEvent.event = TouchEvent::TOUCH_UP;
+      *te = m_lastTouchEvent;
+      m_touchState = TouchEvent::TOUCH_UP;
       result = true;
-      //m_lastTouchEvent = *ev;
+
+#ifdef DEBUG_TOUCH
+      printf_P(PSTR("UIManager: TOUCH_UP (%d, %d)\n"),
+          te->point.x, te->point.y);
+#endif
     }
   }
 
   return result;
 }
 
-void UIManager::setTopLevelUI(UIScene * scene)
+void UIManager::pushUI(UIScene * scene)
 {
-  if(m_curScene != NULL) {
-    if(!m_curScene->isDone()) {
-      printf_P(PSTR("UIManager: WARN scene transition without end\n"));
-    }
-
-    printf_P(PSTR("UIManager: calling onDestroy()\n"));
-    m_curScene->onDestroy();
-
-    // XXX: remove this
-    m_lcd->clearScreen();
-  }
-
-  if(scene)
+  if(m_curScenePos == MAX_SCENES)
   {
-    printf_P(PSTR("UIManager: calling onCreate()\n"));
-    scene->onCreate();
+    printf_P(PSTR("UIManager: WARNING OUT OF SCENES\n"));
+    return;
   }
+
+  if(!scene)
+    return;
+
+  if(m_curScene)
+  {
+    m_curScenePos++;
+    m_sceneStack[m_curScenePos] = m_curScene;
+    printf_P(PSTR("UIManager: saving current scene\n"));
+
+    //printf_P(PSTR("UIManager: calling onPause()\n"));
+    //m_curScene->onPause();
+  }
+
+  printf_P(PSTR("UIManager: calling onCreate()\n"));
+  scene->onCreate();
 
   m_curScene = scene;
+}
+
+void UIManager::popUI()
+{
+  if(m_curScene)
+  {
+    printf_P(PSTR("UIManager: calling onDestroy()\n"));
+    m_curScene->onDestroy();
+    m_curScene = NULL;
+  }
+
+  if(m_curScenePos > -1)
+  {
+    printf_P(PSTR("UIManager: poping UI scene()\n"));
+    m_curScene = m_sceneStack[m_curScenePos];
+    m_curScenePos--;
+
+    // TODO: call onResume
+  }
+  else
+  {
+    printf_P(PSTR("UIManager: no more scenes to pop!\n"));
+  }
 }
