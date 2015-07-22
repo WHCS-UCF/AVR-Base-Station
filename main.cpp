@@ -46,13 +46,6 @@ int main();
 static FILE gLocalStdout;
 static FILE gLocalLCDOut;
 
-// Control Modules
-// door 0, light 1, sensor 2
-ControlModule cmDoor("Door", 0, ROLE_DC_SWITCH);
-ControlModule cmLight("Light", 1, ROLE_AC_SWITCH);
-ControlModule cmTemp("Temperature", 2, ROLE_TEMPERATURE);
-ControlModule * controlModules[] = {&cmDoor, &cmLight, &cmTemp, NULL};
-#define NUM_CONTROL_MODULES 3
 
 // Subsystems and associated resources
 RingBuffer uartRxBuffer, uartTxBuffer;
@@ -64,6 +57,25 @@ WHCSGfx gfx(&tft);
 TouchScreen touch(300, 20); // rxplate, pressure threshold
 UIManager ui(&touch, &lcd);
 BlueTooth bluetooth(&uartRxBuffer, &uartTxBuffer);
+
+// Control Modules
+// door 0, light 1, sensor 2
+ControlModule cmDoor("Door", 0, ROLE_DC_SWITCH);
+ControlModule cmLight("Light", 1, ROLE_AC_SWITCH);
+ControlModule cmTemp("Temperature", 2, ROLE_TEMPERATURE);
+ControlModule cmOutlet("Outlet", 3, ROLE_AC_SWITCH);
+
+UIControlMod uiControl[] = {
+  UIControlMod(&gfx, &cmDoor),
+  UIControlMod(&gfx, &cmLight),
+  UIControlMod(&gfx, &cmTemp),
+  UIControlMod(&gfx, &cmOutlet)
+};
+
+ControlModule * controlModules[] = {
+  &cmDoor, &cmLight, &cmTemp, &cmOutlet
+};
+#define NUM_CONTROL_MODULES 4
 
 // UI scenes
 TouchCalibrate uiCalibrate(&gfx, &touch);
@@ -168,9 +180,9 @@ int main()
   bluetooth.begin();
   ui.begin();
 
-  for(int i = 0; i < NUM_CONTROL_MODULES; i++) {
-    controlModules[i]->printDetails();
-  }
+  rf24.printDetails();
+
+  uiMain.setModules(uiControl, NUM_CONTROL_MODULES);
 
   bool forceCalibration = false;
   if(!EEPROM::hasCalibration() || forceCalibration)
@@ -313,10 +325,10 @@ int main()
                   pktOutBuf[3] = cmTarget;
                   pktOutSize = 4;
 
-                  radioPkt.data[1] = 'O';
+                  radioPkt.data[0] = 'O';
                   radioPkt.size = 1;
 
-                  if(radio.sendTo(cmTarget, &radioPkt)) {
+                  if(radio.sendTo(cmTarget+0xe5, &radioPkt)) {
                     printf("Send ON command to CM\n");
                     if(cm->getRole() == ROLE_AC_SWITCH)
                       cm->setACState(STATE_ON);
@@ -326,9 +338,6 @@ int main()
                   else {
                     printf("ON command failed\n");
                   }
-
-                  for(int i = 0; i < radioPkt.size+1; i++)
-                    printf("%02x ", radioPkt.data[i]);
                   break;
                 case TURN_OFF_MODULE:
                   printf("OFF id %d\n", cmTarget);
@@ -337,10 +346,10 @@ int main()
                   pktOutBuf[3] = cmTarget;
                   pktOutSize = 4;
 
-                  radioPkt.data[1] = 'A';
+                  radioPkt.data[0] = 'A';
                   radioPkt.size = 1;
 
-                  if(radio.sendTo(cmTarget, &radioPkt)) {
+                  if(radio.sendTo(cmTarget+0xe5, &radioPkt)) {
                     printf("Send OFF command to CM\n");
 
                     if(cm->getRole() == ROLE_AC_SWITCH)

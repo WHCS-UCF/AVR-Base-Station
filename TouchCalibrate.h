@@ -46,6 +46,7 @@ class TouchCalibrate : public UIScene
     int16_t m_calXMax[2];
     int16_t m_calYMin[2];
     int16_t m_calYMax[2];
+    int16_t xMin, xMax, yMin, yMax;
 };
 
 #endif // TOUCHCALIBRATE_H

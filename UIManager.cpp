@@ -4,6 +4,7 @@
 #include <avr/pgmspace.h>
 
 #define SCREEN_TIMEOUT_MS 60000
+#define PRESSURE_TOL 40
 #undef DEBUG_POWER_MGMT
 #define DEBUG_TOUCH
 
@@ -184,7 +185,7 @@ bool UIManager::getTouchEvent(TouchEvent * te)
     }
   }
 
-  if(p.valid && p.z != 0)
+  if(p.valid && p.z > PRESSURE_TOL)
   {
     if(m_touchState == TouchEvent::TOUCH_UP) {
 #ifdef DEBUG_TOUCH
@@ -206,7 +207,7 @@ bool UIManager::getTouchEvent(TouchEvent * te)
     // might be expensive if happening a lot
     m_lastTouchEvent.point = p;
   }
-  else if(p.valid && p.z == 0) // touch data not reliable, use last TOUCH_MOVE
+  else if(p.valid && p.z <= PRESSURE_TOL) // touch data not reliable, use last TOUCH_MOVE
   {
     if(m_touchState == TouchEvent::TOUCH_DOWN) {
 

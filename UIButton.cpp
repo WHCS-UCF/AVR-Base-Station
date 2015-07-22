@@ -1,7 +1,7 @@
 #include "UIButton.h"
 
 UIButton::UIButton(WHCSGfx * gfx)
-  :UIView(gfx), m_label(NULL), m_borders(false), m_state(STATE_UP)
+  :UIView(gfx), m_label(NULL), m_borders(false), m_state(STATE_UP), m_fgColor(COLOR_BLACK)
 {
 
 }
@@ -16,8 +16,16 @@ void UIButton::useBorders(bool which)
   m_borders = which;
 }
 
+void UIButton::setForegroundColor(color_t fg)
+{
+  m_fgColor = fg;
+}
+
 void UIButton::touchEvent(TouchEvent * ev)
 {
+  if(!m_visible)
+    return;
+
   state_t newState = m_state;
 
   if(ev->event == TouchEvent::TOUCH_UP)
@@ -26,13 +34,20 @@ void UIButton::touchEvent(TouchEvent * ev)
     newState = STATE_DOWN;
 
   if(newState != m_state) {
-    m_dirty = true;
+    queueDraw();
     m_state = newState;
   }
 }
 
 void UIButton::draw()
 {
+  if(!m_visible) {
+    invalidate();
+    return;
+  }
+
+  m_gfx->clearRect(m_rect, m_bgColor);
+
   if(m_borders)
   {
     if(m_state == STATE_UP)
@@ -58,4 +73,5 @@ void UIButton::invalidate()
   m_gfx->clearRect(m_rect, COLOR_BLACK);
 
   m_drawn = false;
+  m_dirty = false;
 }

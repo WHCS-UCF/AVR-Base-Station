@@ -91,6 +91,11 @@ void WHCSGfx::pixel(point xy, color_t color)
   m_tft->drawPixel(xy.x, xy.y, color);
 }
 
+void WHCSGfx::line(point start, point end, color_t color)
+{
+  m_tft->drawLine(start.x, start.y, end.x, end.y, color);
+}
+
 void WHCSGfx::clearRect(rect bounds, color_t color)
 {
   m_tft->fillRect(bounds.x, bounds.y, bounds.w, bounds.h, color);

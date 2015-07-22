@@ -45,6 +45,11 @@ int16_t ControlModule::getTemperature()
   return m_temperature;
 }
 
+const char * ControlModule::getName()
+{
+  return m_name;
+}
+
 void ControlModule::setACState(uint8_t state)
 {
   m_acState = state;

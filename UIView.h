@@ -21,8 +21,14 @@ class UIView
     bool needsDraw();
     bool isDrawn();
     void queueDraw();
+    void setVisible(bool visible);
+    bool isVisible();
+
     bool within(coord_t x, coord_t y);
     bool within(point * pt);
+    bool within(TouchEvent * ev);
+
+    void setBackgroundColor(color_t c);
 
     coord_t x();
     coord_t y();
@@ -45,8 +51,11 @@ class UIView
   protected:
     WHCSGfx * m_gfx;
     rect m_rect;
-    bool m_dirty;
+
+    color_t m_bgColor;
+    bool m_dirty; // draw state tracking
     bool m_drawn;
+    bool m_visible; // user specified visibility
 };
 
 #endif // UIVIEW_H

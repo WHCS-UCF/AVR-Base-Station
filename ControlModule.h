@@ -28,6 +28,7 @@ class ControlModule
     uint8_t getDCState();
     int16_t getTemperature();
     cm_role_t getRole();
+    const char * getName();
 
     void setACState(uint8_t state);
     void setDCState(uint8_t state);

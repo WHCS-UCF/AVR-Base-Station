@@ -11,12 +11,15 @@ class UIButton : public UIView
     void setLabel(const char * label);
     void useBorders(bool which);
 
+    void setForegroundColor(color_t fg);
+
     void touchEvent(TouchEvent * ev);
     void draw();
     void invalidate();
   private:
     const char * m_label;
     bool m_borders;
+    color_t m_fgColor;
 
     typedef uint8_t state_t;
     enum button_state_t { STATE_DOWN, STATE_UP };

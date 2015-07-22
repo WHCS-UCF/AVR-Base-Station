@@ -175,7 +175,7 @@ $(BUILD_DIR)/%.d : %.cpp
 upload : upload_spi
 
 upload_spi: all $(PROGRAM).hex
-	$(AVRDUDE) -p $(AVRDUDE_MCU) -c usbtiny $(AVRDUDE_DEV) -B 1 -V -U flash:w:$(PROGRAM).hex:i
+	$(AVRDUDE) -p $(AVRDUDE_MCU) -c usbtiny $(AVRDUDE_DEV) -V -B 1 -U flash:w:$(PROGRAM).hex:i
 
 upload_spi_slow: all $(PROGRAM).hex
 	$(AVRDUDE) -p $(AVRDUDE_MCU) -c usbtiny $(AVRDUDE_DEV) -V -U flash:w:$(PROGRAM).hex:i

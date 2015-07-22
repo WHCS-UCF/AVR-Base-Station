@@ -31,6 +31,9 @@ void TouchCalibrate::touchEvent(TouchEvent * ev)
 {
   if(m_vAcceptButton.isDrawn() && m_vAcceptButton.within(ev->point.x, ev->point.y))
   {
+    // save calibration
+    EEPROM::saveCalibration(xMin, xMax, yMin, yMax);
+
     end();
     queueRedraw();
     return m_vAcceptButton.touchEvent(ev);
@@ -76,13 +79,17 @@ void TouchCalibrate::touchEvent(TouchEvent * ev)
 
 void TouchCalibrate::onCreate()
 {
+  m_vAcceptButton.setForegroundColor(COLOR_WHITE);
   m_vAcceptButton.useBorders(true);
   m_vAcceptButton.setBounds(50, m_gfx->height()-60, 100, 25);
   m_vAcceptButton.setLabel("Accept");
+  m_vAcceptButton.setVisible(true);
 
+  m_vResetButton.setForegroundColor(COLOR_WHITE);
   m_vResetButton.useBorders(true);
   m_vResetButton.setBounds(160, m_gfx->height()-60, 100, 25);
   m_vResetButton.setLabel("Reset");
+  m_vResetButton.setVisible(true);
 
   reset();
 }
@@ -97,18 +104,16 @@ void TouchCalibrate::tick()
   {
     if(checkCal())
     {
-      int xMin = (m_calXMin[0]+m_calXMin[1])/2;
-      int xMax = (m_calXMax[0]+m_calXMax[1])/2;
+      xMin = (m_calXMin[0]+m_calXMin[1])/2;
+      xMax = (m_calXMax[0]+m_calXMax[1])/2;
 
-      int yMin = (m_calYMin[0]+m_calYMin[1])/2;
-      int yMax = (m_calYMax[0]+m_calYMax[1])/2;
+      yMin = (m_calYMin[0]+m_calYMin[1])/2;
+      yMax = (m_calYMax[0]+m_calYMax[1])/2;
 #ifdef DEBUG_CAL
       printf("Display calibrated: Xmin %d, XMax %d, Ymin %d, Ymax %d\n",
           xMin, xMax, yMin, yMax);
 #endif
 
-      // save and set calibration
-      EEPROM::saveCalibration(xMin, xMax, yMin, yMax);
       setCalibration(xMin, xMax, yMin, yMax);
 
       // start a timer to reset the calibration if the user doesn't

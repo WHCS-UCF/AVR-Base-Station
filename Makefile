@@ -16,6 +16,7 @@ SOURCES=main.cpp \
 	UIView.cpp \
 	UIButton.cpp \
 	UIMain.cpp \
+	UIControlMod.cpp \
 	eeprom.cpp
 
 LIBRARIES=lib/MEGA32A_UART_LIBRARY/MEGA32A_UART_LIBRARY/libUART.a \

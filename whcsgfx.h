@@ -43,6 +43,7 @@ class WHCSGfx
     coord_t height();
     void pixel(coord_t x, coord_t y, color_t color);
     void pixel(point xy, color_t color);
+    void line(point start, point end, color_t color);
 
     void fillRect(coord_t x, coord_t y, coord_t w, coord_t h, color_t color);
     void fillRect(rect bounds, color_t color);

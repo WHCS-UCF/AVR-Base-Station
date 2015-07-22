@@ -1,27 +1,31 @@
 #include "UIView.h"
 
 UIView::UIView()
-  :m_gfx(NULL), m_dirty(false), m_drawn(false)
+  :m_gfx(NULL), m_dirty(false), m_drawn(false), m_visible(false)
 {
   setBounds(0, 0, 0, 0);
+  setBackgroundColor(COLOR_BLACK);
 }
 
 UIView::UIView(WHCSGfx * gfx)
-  :m_gfx(gfx), m_dirty(false), m_drawn(false)
+  :m_gfx(gfx), m_dirty(false), m_drawn(false), m_visible(false)
 {
   setBounds(0, 0, 0, 0);
+  setBackgroundColor(COLOR_BLACK);
 }
 
 UIView::UIView(rect bounds)
-  :m_gfx(NULL), m_dirty(false), m_drawn(false)
+  :m_gfx(NULL), m_dirty(false), m_drawn(false), m_visible(false)
 {
   setBounds(bounds);
+  setBackgroundColor(COLOR_BLACK);
 }
 
 UIView::UIView(coord_t x, coord_t y, coord_t w, coord_t h)
-  :m_gfx(NULL), m_dirty(false), m_drawn(false)
+  :m_gfx(NULL), m_dirty(false), m_drawn(false), m_visible(false)
 {
   setBounds(x, y, w, y);
+  setBackgroundColor(COLOR_BLACK);
 }
 
 void UIView::setDrawingCtx(WHCSGfx * gfx)
@@ -44,10 +48,28 @@ void UIView::queueDraw()
   m_dirty = true;
 }
 
+void UIView::setVisible(bool visible)
+{
+  if(visible != m_visible) {
+    m_visible = visible;
+    queueDraw();
+  }
+}
+
+bool UIView::isVisible()
+{
+  return m_visible;
+}
+
 bool UIView::within(coord_t x, coord_t y)
 {
   point p = {x, y};
   return within(&p);
+}
+
+bool UIView::within(TouchEvent * ev)
+{
+  return within(ev->point.x, ev->point.y);
 }
 
 bool UIView::within(struct point * pt)
@@ -57,6 +79,11 @@ bool UIView::within(struct point * pt)
   if(pt->x >= m_rect.x + m_rect.w) return false;
   if(pt->y >= m_rect.y + m_rect.h) return false;
   return true;
+}
+
+void UIView::setBackgroundColor(color_t c)
+{
+  m_bgColor = c;
 }
 
 coord_t UIView::x()
