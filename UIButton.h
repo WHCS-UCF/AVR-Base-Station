@@ -13,7 +13,8 @@ class UIButton : public UIView
 
     void setForegroundColor(color_t fg);
 
-    void touchEvent(TouchEvent * ev);
+    bool touchEvent(TouchEvent * ev);
+    void noEvent();
     void draw();
     void invalidate();
   private:

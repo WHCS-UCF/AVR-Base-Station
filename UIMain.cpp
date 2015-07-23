@@ -9,10 +9,28 @@ UIMain::UIMain(WHCSGfx * gfx)
 void UIMain::touchEvent(TouchEvent * ev)
 {
   if(m_vSettingsButton.within(ev)) {
-    printf_P(PSTR("Settings button hit\n"));
-    m_vSettingsButton.touchEvent(ev);
-    queueRedraw();
-    return;
+    if(m_vSettingsButton.touchEvent(ev))
+    {
+      printf_P(PSTR("Settings button hit\n"));
+      queueRedraw();
+      return;
+    }
+  }
+  else
+  {
+    m_vSettingsButton.noEvent();
+  }
+
+  for(int i = 0; i < m_numCtrl; i++) {
+      if(m_vCtrl[i].within(ev)) {
+        m_vCtrl[i].touchEvent(ev);
+        queueRedraw();
+      }
+      else
+      {
+        m_vCtrl[i].noEvent();
+        queueRedraw();
+      }
   }
 
   m_gfx->pixel(ev->point.x, ev->point.y, COLOR_BLACK);
@@ -37,7 +55,14 @@ void UIMain::onDestroy()
 
 void UIMain::tick()
 {
-
+  for(int i = 0; i < m_numCtrl; i++) {
+    if(m_vCtrl[i].hasUpdate()) {
+      m_vCtrl[i].queueDraw();
+      m_vCtrl[i].clearUpdate();
+      queueRedraw();
+      break;
+    }
+  }
 }
 
 void UIMain::draw()
@@ -48,7 +73,7 @@ void UIMain::draw()
 
     m_gfx->cursor(10,10);
     m_gfx->textSize(3);
-    m_gfx->textColor(COLOR_PURPLE);
+    m_gfx->textColor(0xe51a);
     m_gfx->puts("W H C S");
     m_gfx->line({0, 45}, {m_gfx->width()-1, 45}, COLOR_RED);
 

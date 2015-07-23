@@ -36,14 +36,16 @@ void TouchCalibrate::touchEvent(TouchEvent * ev)
 
     end();
     queueRedraw();
-    return m_vAcceptButton.touchEvent(ev);
+    m_vAcceptButton.touchEvent(ev);
+    return;
   }
 
   if(m_vResetButton.isDrawn() && m_vResetButton.within(ev->point.x, ev->point.y))
   {
     reset();
     queueRedraw();
-    return m_vResetButton.touchEvent(ev);
+    m_vResetButton.touchEvent(ev);
+    return;
   }
 
   if(ev->event != TouchEvent::TOUCH_DOWN)

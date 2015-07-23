@@ -21,10 +21,10 @@ void UIButton::setForegroundColor(color_t fg)
   m_fgColor = fg;
 }
 
-void UIButton::touchEvent(TouchEvent * ev)
+bool UIButton::touchEvent(TouchEvent * ev)
 {
   if(!m_visible)
-    return;
+    return false;
 
   state_t newState = m_state;
 
@@ -35,7 +35,22 @@ void UIButton::touchEvent(TouchEvent * ev)
 
   if(newState != m_state) {
     queueDraw();
+
     m_state = newState;
+
+    if(m_state == TouchEvent::TOUCH_UP)
+      return true;
+  }
+
+  return false;
+}
+
+void UIButton::noEvent()
+{
+  if(m_state != STATE_UP)
+  {
+    m_state = STATE_UP;
+    queueDraw();
   }
 }
 

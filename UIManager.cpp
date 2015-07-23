@@ -6,7 +6,7 @@
 #define SCREEN_TIMEOUT_MS 60000
 #define PRESSURE_TOL 40
 #undef DEBUG_POWER_MGMT
-#define DEBUG_TOUCH
+#undef DEBUG_TOUCH
 
 UIManager::UIManager(TouchScreen * touch, WHCSLCD * lcd)
   :m_touch(touch), m_lcd(lcd), m_touchState(TouchEvent::TOUCH_UP)

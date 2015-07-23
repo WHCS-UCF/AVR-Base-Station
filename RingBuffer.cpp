@@ -18,6 +18,14 @@ bool RingBuffer::full()
   return m_available == sizeof(m_buf);
 }
 
+void RingBuffer::clear()
+{
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    m_available = 0;
+    m_tail = m_head = 0;
+  }
+}
+
 bool RingBuffer::empty()
 {
   return m_available == 0;

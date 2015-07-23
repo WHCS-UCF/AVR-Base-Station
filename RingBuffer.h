@@ -12,6 +12,7 @@ public:
   bool available();
   bool empty();
   bool full();
+  void clear();
 
   uint8_t get();
   void put(uint8_t data);

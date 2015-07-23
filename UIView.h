@@ -14,7 +14,8 @@ class UIView
     UIView(coord_t x, coord_t y, coord_t w, coord_t h);
 
     void setDrawingCtx(WHCSGfx * gfx);
-    virtual void touchEvent(TouchEvent * ev) = 0;
+    virtual bool touchEvent(TouchEvent * ev) = 0;
+    virtual void noEvent() = 0;
     virtual void draw() = 0;
     virtual void invalidate() = 0;
 
