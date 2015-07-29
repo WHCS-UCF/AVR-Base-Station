@@ -268,7 +268,7 @@ void UIManager::popUI()
     m_curScene = m_sceneStack[m_curScenePos];
     m_curScenePos--;
 
-    // TODO: call onResume
+    m_curScene->onResume();
   }
   else
   {

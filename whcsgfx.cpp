@@ -33,9 +33,9 @@ void WHCSGfx::drawAsciiArt(int16_t x, int16_t y, const PROGMEM uint8_t * array, 
     {
       if(byte == '\n')
       {
-        int16_t x, y;
-        m_tft->getCursor(&x, &y);
-        m_tft->setCursor(0, y+8);
+        int16_t xOld, yOld;
+        m_tft->getCursor(&xOld, &yOld);
+        m_tft->setCursor(x, yOld+8);
       }
       else if(byte == 0x1) // normal color
         m_tft->setTextColor(0x0560);

@@ -14,6 +14,7 @@ class UIControlMod : public UIView
 
     void onCreate();
     bool touchEvent(TouchEvent * ev);
+    void redrawAll();
     void noEvent();
     void doAction();
     void draw();

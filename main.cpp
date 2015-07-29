@@ -24,10 +24,6 @@
 #include "ControlModule.h"
 #include "util.h"
 
-#include "img/grant.h"
-#include "img/jimmy.h"
-#include "img/ucf.h"
-
 ///////////////////////////////////////
 // Function prototypes
 ///////////////////////////////////////
@@ -85,7 +81,7 @@ ControlModule * controlModules[] = {
 
 // UI scenes
 TouchCalibrate uiCalibrate(&gfx, &touch);
-UIMain uiMain(&gfx);
+UIMain uiMain(&gfx, &ui);
 
 ///////////////////////////////////////
 // Interrupt handlers

@@ -11,6 +11,12 @@ void UIScene::touchEvent(TouchEvent * ev)
 
 }
 
+void UIScene::onCreate()
+{
+  m_done = false;
+  m_dirty = true;
+}
+
 void UIScene::tick()
 {
 

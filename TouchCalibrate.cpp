@@ -19,6 +19,8 @@ void TouchCalibrate::reset()
   m_newState = true;
   m_touch->useRawCoords();
   m_gfx->clearScreen(COLOR_BLACK);
+  m_vAcceptButton.setVisible(false);
+  m_vResetButton.setVisible(false);
 
 #ifdef DEBUG_CAL
   printf_P(PSTR("TouchCalibrate::reset()\n"));
@@ -85,15 +87,22 @@ void TouchCalibrate::onCreate()
   m_vAcceptButton.useBorders(true);
   m_vAcceptButton.setBounds(50, m_gfx->height()-60, 100, 25);
   m_vAcceptButton.setLabel("Accept");
-  m_vAcceptButton.setVisible(true);
+  m_vAcceptButton.setVisible(false);
 
   m_vResetButton.setForegroundColor(COLOR_WHITE);
   m_vResetButton.useBorders(true);
   m_vResetButton.setBounds(160, m_gfx->height()-60, 100, 25);
   m_vResetButton.setLabel("Reset");
-  m_vResetButton.setVisible(true);
+  m_vResetButton.setVisible(false);
 
   reset();
+
+  UIScene::onCreate();
+}
+
+void TouchCalibrate::onResume()
+{
+
 }
 
 void TouchCalibrate::onDestroy()
@@ -127,6 +136,8 @@ void TouchCalibrate::tick()
       m_state = CAL_ACCEPT;
       m_secondsLeft = 16;
 
+      m_vAcceptButton.setVisible(true);
+      m_vResetButton.setVisible(true);
       m_vAcceptButton.queueDraw();
       m_vResetButton.queueDraw();
       queueRedraw();

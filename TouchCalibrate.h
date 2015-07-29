@@ -18,6 +18,7 @@ class TouchCalibrate : public UIScene
 
     void touchEvent(TouchEvent * ev); // called on a touch event
     void onCreate(); // called when scene first created
+    void onResume();
     void onDestroy();
     void tick(); 
     void draw();

@@ -1,7 +1,7 @@
 #include "UIMain.h"
 
-UIMain::UIMain(WHCSGfx * gfx)
-  :UIScene(gfx), m_vSettingsButton(gfx), m_drawFrame(false)
+UIMain::UIMain(WHCSGfx * gfx, UIManager * mgr)
+  :UIScene(gfx), m_vSettingsButton(gfx), m_drawFrame(false), m_mgr(mgr), m_credits(gfx)
 {
 
 }
@@ -12,6 +12,7 @@ void UIMain::touchEvent(TouchEvent * ev)
     if(m_vSettingsButton.touchEvent(ev))
     {
       printf_P(PSTR("Settings button hit\n"));
+      m_mgr->pushUI(&m_credits);
       queueRedraw();
       return;
     }
@@ -36,16 +37,25 @@ void UIMain::touchEvent(TouchEvent * ev)
   m_gfx->pixel(ev->point.x, ev->point.y, COLOR_BLACK);
 }
 
+void UIMain::onResume()
+{
+  m_drawFrame = true;
+  for(int i = 0; i < m_numCtrl; i++)
+    m_vCtrl[i].redrawAll();
+
+  queueRedraw();
+}
+
 void UIMain::onCreate()
 {
   m_vSettingsButton.useBorders(true);
   m_vSettingsButton.setBackgroundColor(COLOR_LIGHTGREY);
   m_vSettingsButton.setForegroundColor(COLOR_BLACK);
   m_vSettingsButton.setBounds(m_gfx->width()-120, 10, 105, 25);
-  m_vSettingsButton.setLabel("Settings");
+  m_vSettingsButton.setLabel("Credits");
   m_vSettingsButton.setVisible(true);
 
-  m_drawFrame = true;
+  onResume();
 }
 
 void UIMain::onDestroy()
@@ -58,7 +68,6 @@ void UIMain::tick()
   for(int i = 0; i < m_numCtrl; i++) {
     if(m_vCtrl[i].hasUpdate()) {
       m_vCtrl[i].queueDraw();
-      m_vCtrl[i].clearUpdate();
       queueRedraw();
       break;
     }
