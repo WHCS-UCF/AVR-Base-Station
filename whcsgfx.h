@@ -56,6 +56,8 @@ class WHCSGfx
     void textColor(color_t color);
     void textSize(uint8_t s);
     void puts(const char * str);
+
+    Adafruit_TFTLCD * getTFT();
   private:
     Adafruit_TFTLCD * m_tft;
 };

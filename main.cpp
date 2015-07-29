@@ -41,7 +41,7 @@ int main();
 ///////////////////////////////////////
 
 // Misc
-#define MAIN_LOOP_WARNING 300 // 300ms maximum main loop time until warning
+#define MAIN_LOOP_WARNING 400 // 300ms maximum main loop time until warning
 // STDIO file handles for printf related functions
 static FILE gLocalStdout;
 static FILE gLocalLCDOut;
@@ -50,7 +50,7 @@ static FILE gLocalLCDOut;
 // Subsystems and associated resources
 RingBuffer uartRxBuffer, uartTxBuffer;
 RF24 rf24(NRF_CE_NUMBER, NRF_CS_NUMBER); // pins on PORTB ONLY
-Radio radio(&rf24, 0x41);
+Radio radio(&rf24, 0xde);
 Adafruit_TFTLCD tft(&gLocalLCDOut);
 WHCSLCD lcd(&tft, 3);
 WHCSGfx gfx(&tft);
@@ -62,13 +62,13 @@ BlueTooth bluetooth(&uartRxBuffer, &uartTxBuffer);
 // door 0, light 1, sensor 2
 extern UIControlMod uiControl[];
 
-ControlModule cmDoor(&bluetooth, &uiControl[0],
+ControlModule cmDoor(&bluetooth, &uiControl[0], &radio,
     "Door", 0, ROLE_DC_SWITCH);
-ControlModule cmLight(&bluetooth, &uiControl[1],
+ControlModule cmLight(&bluetooth, &uiControl[1], &radio,
     "Light", 1, ROLE_AC_SWITCH);
-ControlModule cmTemp(&bluetooth, &uiControl[2],
+ControlModule cmTemp(&bluetooth, &uiControl[2], &radio,
     "Temperature", 2, ROLE_TEMPERATURE);
-ControlModule cmOutlet(&bluetooth, &uiControl[3],
+ControlModule cmOutlet(&bluetooth, &uiControl[3], &radio,
     "Outlet", 3, ROLE_AC_SWITCH);
 
 UIControlMod uiControl[] = {
@@ -108,6 +108,18 @@ ISR(USART_UDRE_vect)
     disableTXInterrupts();
 }
 
+// read incoming radio packets
+//ISR(INT0_vect)
+//{
+//  radio_pkt pkt;
+//  if(rf24.available())
+//  {
+//    if(rf24.read(&pkt, MAX_PACKET_SIZE))
+//      if(!radio.queuePacket(&pkt));
+//          //printf("\n");
+//  }
+//}
+
 // called instead of RESET (vect0) for a bad ISR
 ISR(BADISR_vect)
 {
@@ -124,17 +136,6 @@ ISR(BADISR_vect)
 ///////////////////////////////////////
 // Function definitions
 ///////////////////////////////////////
-
-static inline int FreeRAM() {
-  extern int __heap_start, *__brkval; 
-  int v; 
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-}
-
-static inline int TotalRAM() {
-  extern char *__data_start; 
-  return (int)(RAMEND - (int)&__data_start + 1);
-}
 
 int lcd_putchar(char c, FILE *stream) {
   tft.write(c);
@@ -183,40 +184,10 @@ int main()
 
   // start up the components
   radio.begin();
+  //radio.enableInterrupt();
   bluetooth.begin();
   bluetooth.setModules(controlModules, NUM_CONTROL_MODULES);
   ui.begin();
-
-  /*coord_t x = 0, y = 0;
-  bool first = true;
-
-  lcd.screenOn();
-  //setAddrWindow(int x1, int y1, int x2, int y2);
-  //pushColors(uint16_t *data, uint8_t len, boolean first);
-
-  //tft.setAddrWindow(0,0, gfx.width()-1, gfx.height()-1);
-  for(uint16_t i = 0x0; i < 0xffff;)
-  {
-    y = x/gfx.width();
-
-    tft.fillScreen(i);
-    tft.setCursor(0, 200);
-    tft.setTextSize(2);
-    tft.setTextColor(~i);
-    tft.printf("Color 0x%04x", i);
-
-    
-    //tft.pushColors(&i, 1, first);
-    first = false;
-    //gfx.pixel(x % gfx.width(), y, i);
-    x++;
-    i += ;
-  }
-  while(1)
-  {
-  }*/
-
-  rf24.printDetails();
 
   uiMain.setModules(uiControl, NUM_CONTROL_MODULES);
 
@@ -236,8 +207,10 @@ int main()
   }
 
   printf_P(PSTR("WHCS main loop starting\n"));
-  printf_P(PSTR("Free RAM %d/%d bytes\n\n"), FreeRAM(), TotalRAM());
-  //printf_P(PSTR("Stack watermark: %u\n"), StackCount());
+#ifdef ENABLE_MEMORY_DEBUGGING
+  printf_P(PSTR("Free RAM %d/%d bytes\n"), FreeRAM(), TotalRAM());
+  printf_P(PSTR("Stack watermark: %u\n\n"), StackCount());
+#endif
 
   uint8_t pktBuf[10];
   uint8_t ptr = 0;
@@ -269,6 +242,30 @@ int main()
     bluetooth.tick();
     bluetooth.receiveCommand();
 
+    radio_pkt pkt;
+    while(rf24.available())
+    {
+      if(rf24.read(&pkt, MAX_PACKET_SIZE))
+        if(!radio.queuePacket(&pkt))
+            printf("WARNING: Failed to queue\n");
+    }
+
+    while(radio.available())
+    {
+      radio_pkt pkt;
+      radio.recv(&pkt);
+
+      // figure out who this is for and dispatch it
+      if(pkt.from >= 0 && pkt.from < NUM_CONTROL_MODULES)
+        controlModules[pkt.from]->handlePacket(&pkt);
+      else
+        printf_P(PSTR("Ignoring packet to CM %d\n"), pkt.from);
+    }
+
+    // tick all the control modules
+    for(int i = 0; i < NUM_CONTROL_MODULES; i++)
+      controlModules[i]->tick();
+
     ///////////////////////////////////////
     // END MAIN LOOP TIMING
     ///////////////////////////////////////
@@ -276,7 +273,10 @@ int main()
     time_t delta = millis() - mainStart;
 
     if(loopTimeReset.update())
+    {
       maxLoopTime = 0;
+      rf24.startListening();
+    }
 
     if(delta > maxLoopTime) {
       loopTimeReset.once(5000);
@@ -290,6 +290,11 @@ int main()
         printf_P(PSTR(" (+%lums)\n"), delta-maxLoopTime);
       else
         printf_P(PSTR("\n"));
+
+#ifdef ENABLE_MEMORY_DEBUGGING
+  printf_P(PSTR("Free RAM %d/%d bytes\n"), FreeRAM(), TotalRAM());
+  printf_P(PSTR("Stack watermark: %u\n"), StackCount());
+#endif
 
       //printf_P(PSTR("Stack watermark: %u\n"), StackCount());
       maxLoopTime = delta;

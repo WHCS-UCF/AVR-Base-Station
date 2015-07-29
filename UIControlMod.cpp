@@ -57,32 +57,34 @@ void UIControlMod::noEvent()
 
 void UIControlMod::doAction()
 {
-  printf_P(PSTR("%s action: "), m_ctrl->getName());
-
   uint8_t state;
 
   if(m_ctrl->getRole() == ROLE_AC_SWITCH)
   {
     state = !m_ctrl->getACState();
     m_ctrl->setACState(state, PUB_LCD);
-    printf_P(PSTR("AC %d\n"), state);
+    //printf_P(PSTR("UI: %s action: AC %d\n"), m_ctrl->getName(), state);
   }
   else if(m_ctrl->getRole() == ROLE_DC_SWITCH)
   {
     state = !m_ctrl->getDCState();
     m_ctrl->setDCState(state, PUB_LCD);
-    printf_P(PSTR("DC %d\n"), state);
+    //printf_P(PSTR("UI: %s action: DC %d\n"), m_ctrl->getName(), state);
   }
 }
 
 void UIControlMod::draw()
 {
+  m_gfx->cursor(m_rect.x+10, m_rect.y+m_rect.h/2-3);
+  m_gfx->textSize(2);
+  if(m_ctrl->isAlive())
+    m_gfx->textColor(COLOR_GREEN);
+  else
+    m_gfx->textColor(COLOR_RED);
+  m_gfx->puts(m_ctrl->getName());
+
   if(m_drawFrame)
   {
-    m_gfx->cursor(m_rect.x+10, m_rect.y+m_rect.h/2-3);
-    m_gfx->textSize(2);
-    m_gfx->textColor(COLOR_BLACK);
-    m_gfx->puts(m_ctrl->getName());
     m_gfx->line({m_rect.x, m_rect.y+m_rect.h},
         {m_rect.x+m_rect.w, m_rect.y+m_rect.h}, COLOR_BLACK);
 
@@ -93,11 +95,12 @@ void UIControlMod::draw()
   color_t color;
   cm_role_t role = m_ctrl->getRole();
 
-
   if(role == ROLE_AC_SWITCH)
     state = m_ctrl->getACState();
   else if(role == ROLE_DC_SWITCH)
     state = m_ctrl->getDCState();
+  else if(role == ROLE_TEMPERATURE)
+    state = m_ctrl->getTemperature();
 
   if(role == ROLE_DC_SWITCH || role == ROLE_AC_SWITCH)
   {
@@ -107,6 +110,14 @@ void UIControlMod::draw()
       color = COLOR_RED;
 
     m_gfx->fillRect(m_rect.x+120, m_rect.y+m_rect.h/2-3, 10, 10, color);
+  }
+  else if(role == ROLE_TEMPERATURE)
+  {
+    m_gfx->cursor(m_rect.x+m_rect.w-80, m_rect.y+m_rect.h/2-3);
+    m_gfx->textSize(2);
+    m_gfx->textColor(COLOR_BLUE);
+    m_gfx->fillRect(m_rect.x+m_rect.w-80, m_rect.y+m_rect.h/2-3, 5*5*2, 8*2, COLOR_WHITE);
+    m_gfx->getTFT()->printf("%hd F", state);
   }
 
   if(m_vAction.needsDraw())

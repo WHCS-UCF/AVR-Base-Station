@@ -80,11 +80,6 @@ void UIMain::draw()
     m_drawFrame = false;
   }
 
-  /*for(int i = 0; i < m_numControlModules; i++)
-  {
-    drawControlModule(...);
-  }*/
-
   if(m_vSettingsButton.needsDraw())
     m_vSettingsButton.draw();
 

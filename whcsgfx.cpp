@@ -125,3 +125,8 @@ void WHCSGfx::puts(const char * str)
 {
   m_tft->println((char *)str);
 }
+
+Adafruit_TFTLCD * WHCSGfx::getTFT()
+{
+  return m_tft;
+}

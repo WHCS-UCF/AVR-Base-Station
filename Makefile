@@ -4,6 +4,7 @@ SOURCES=main.cpp \
 	SoftSerial.cpp \
 	compat.cpp \
 	fun.cpp \
+	util.cpp \
 	whcslcd.cpp \
 	whcsgfx.cpp \
 	touchscreen.cpp \

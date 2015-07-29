@@ -37,6 +37,8 @@ public:
   void sendNotifyUpdate();
   void respQueryIfBaseStation();
   void respSuccess(uint8_t cm);
+  void respError(uint8_t cm);
+  void respErrorResult(uint8_t cm, uint8_t result);
   void respSuccessResult(uint8_t cm, uint8_t result);
 private:
   ControlModule * getControlById(uint8_t id);

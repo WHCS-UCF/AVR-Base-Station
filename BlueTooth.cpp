@@ -251,16 +251,17 @@ void BlueTooth::receiveCommand()
       printf("Bad control module %d\n", cmTarget);
       continue;
     }
+    uint8_t status = 0;
+    bool result = false;
 
     switch(opcode)
     {
       case GET_MODULE_STATUS:
-      {
-        printf("GET_STATUS id %d\n", cmTarget);
+        printf("BT: GET_STATUS id %d\n", cmTarget);
 
+        // too noisy
         cm->printDetails();
 
-        uint8_t status = 0;
         if(cm->getRole() == ROLE_AC_SWITCH)
           status = cm->getACState();
         else if(cm->getRole() == ROLE_DC_SWITCH)
@@ -270,26 +271,31 @@ void BlueTooth::receiveCommand()
 
         respSuccessResult(cmTarget, status);
         break;
-      }
       case TURN_ON_MODULE:
-        printf("ON id %d\n", cmTarget);
+        printf("BT: ON id %d\n", cmTarget);
 
         if(cm->getRole() == ROLE_AC_SWITCH)
-          cm->setACState(STATE_ON, PUB_BT);
+          result = cm->setACState(STATE_ON, PUB_BT);
         else if(cm->getRole() == ROLE_DC_SWITCH)
-          cm->setDCState(STATE_ON, PUB_BT);
+          result = cm->setDCState(STATE_ON, PUB_BT);
 
-        respSuccess(cmTarget);
+        if(result)
+          respSuccess(cmTarget);
+        else
+          respErrorResult(cmTarget, cm->getState());
         break;
       case TURN_OFF_MODULE:
-        printf("OFF id %d\n", cmTarget);
+        printf("BT: OFF id %d\n", cmTarget);
 
         if(cm->getRole() == ROLE_AC_SWITCH)
-          cm->setACState(STATE_OFF, PUB_BT);
+          result = cm->setACState(STATE_OFF, PUB_BT);
         else if(cm->getRole() == ROLE_DC_SWITCH)
-          cm->setDCState(STATE_OFF, PUB_BT);
+          result = cm->setDCState(STATE_OFF, PUB_BT);
 
-        respSuccess(cmTarget);
+        if(result)
+          respSuccess(cmTarget);
+        else
+          respErrorResult(cmTarget, cm->getState());
         break;
       default:
         printf("UnkOP %02x\n", opcode);
@@ -328,6 +334,21 @@ void BlueTooth::respSuccess(uint8_t cm)
 {
   uint8_t outBuf[4];
   buildPkt(outBuf, SUCCESS_NO_RESULT, cm);
+  write(outBuf, sizeof(outBuf));
+}
+
+void BlueTooth::respError(uint8_t cm)
+{
+  uint8_t outBuf[4];
+  buildPkt(outBuf, ERROR_NO_RESULT, cm);
+  write(outBuf, sizeof(outBuf));
+}
+
+void BlueTooth::respErrorResult(uint8_t cm, uint8_t result)
+{
+  uint8_t outBuf[5];
+  buildPkt(outBuf, ERROR_WITH_RESULT, cm);
+  outBuf[4] = result;
   write(outBuf, sizeof(outBuf));
 }
 
