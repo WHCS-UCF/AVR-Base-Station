@@ -7,8 +7,8 @@
 #include "Radio.h"
 #include "Timer.h"
 
-#define CONTROL_MOD_TIMEOUT 10000
-#define CONTROL_MOD_PING 5000
+#define CONTROL_MOD_TIMEOUT 15000
+#define CONTROL_MOD_PING 4000
 
 enum cm_role_t {
   ROLE_NONE = 0,

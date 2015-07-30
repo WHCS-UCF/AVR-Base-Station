@@ -70,12 +70,14 @@ void UIControlMod::doAction()
   {
     state = !m_ctrl->getACState();
     m_ctrl->setACState(state, PUB_LCD);
+    gotUpdate();
     //printf_P(PSTR("UI: %s action: AC %d\n"), m_ctrl->getName(), state);
   }
   else if(m_ctrl->getRole() == ROLE_DC_SWITCH)
   {
     state = !m_ctrl->getDCState();
     m_ctrl->setDCState(state, PUB_LCD);
+    gotUpdate();
     //printf_P(PSTR("UI: %s action: DC %d\n"), m_ctrl->getName(), state);
   }
 }
@@ -86,10 +88,12 @@ void UIControlMod::draw()
   {
     m_gfx->cursor(m_rect.x+10, m_rect.y+m_rect.h/2-3);
     m_gfx->textSize(2);
+
     if(m_ctrl->isAlive())
       m_gfx->textColor(COLOR_GREEN);
     else
       m_gfx->textColor(COLOR_RED);
+
     m_gfx->puts(m_ctrl->getName());
 
     m_gfx->line({m_rect.x, m_rect.y+m_rect.h},
@@ -99,6 +103,7 @@ void UIControlMod::draw()
     color_t color;
     cm_role_t role = m_ctrl->getRole();
 
+    // get the per module state
     if(role == ROLE_AC_SWITCH)
       state = m_ctrl->getACState();
     else if(role == ROLE_DC_SWITCH)
@@ -142,6 +147,7 @@ void UIControlMod::invalidate()
 void UIControlMod::gotUpdate()
 {
   m_hasUpdate = true;
+  //printf("GOT UPDATE %s\n", m_ctrl->getName());
 }
 
 bool UIControlMod::hasUpdate()

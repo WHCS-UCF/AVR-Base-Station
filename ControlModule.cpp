@@ -1,6 +1,10 @@
 #include "ControlModule.h"
 
 #include <stdio.h>
+#ifdef abs
+#undef abs
+#endif
+#include <stdlib.h>
 
 ControlModule::ControlModule(BlueTooth * bt, UIControlMod * uiCtrl, Radio * radio,
     const char * name, cm_id_t id, cm_role_t role)
@@ -8,7 +12,8 @@ ControlModule::ControlModule(BlueTooth * bt, UIControlMod * uiCtrl, Radio * radi
   m_temperature(0), m_bt(bt), m_uiCtrl(uiCtrl), m_radio(radio), m_alive(false)
 {
   //m_tHeartbeat.once(CONTROL_MOD_TIMEOUT);
-  m_tPing.periodic(CONTROL_MOD_PING);
+  m_tPing.periodic(CONTROL_MOD_PING + (rand() % 1000 + 500));
+  m_tPing.fire();
 }
 
 void ControlModule::tick()
@@ -114,6 +119,12 @@ void ControlModule::handlePacket(radio_pkt * pkt)
       printf_P(PSTR("*** CONTROL MOD %s ALIVE ***\n"), m_name);
       m_alive = true;
       m_uiCtrl->gotUpdate();
+
+      // get it's status
+      if(m_radio->sendTo(m_id, RADIO_OP_GET_STATUS, NULL, 0))
+      {
+        printf("Getting status\n");
+      }
     }
     break;
   case RADIO_OP_NEWDATA:

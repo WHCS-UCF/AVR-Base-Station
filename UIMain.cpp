@@ -34,7 +34,7 @@ void UIMain::touchEvent(TouchEvent * ev)
       }
   }
 
-  m_gfx->pixel(ev->point.x, ev->point.y, COLOR_BLACK);
+  //m_gfx->pixel(ev->point.x, ev->point.y, COLOR_BLACK);
 }
 
 void UIMain::onResume()

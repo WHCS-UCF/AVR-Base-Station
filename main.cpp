@@ -3,6 +3,11 @@
 #include <util/delay.h>
 #include <stdio.h>
 
+#ifdef abs
+#undef abs
+#endif
+#include <stdlib.h>
+
 #include <MEGA32A_UART_LIBRARY.h>
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
 #include <RF24.h>
@@ -171,6 +176,9 @@ int main()
   early_init(); // bring up basic subsystems and timing
   sei(); // start interrupts
 
+  // seed the rand num gen
+  srand(WHCSADC::read(1));
+
   printf_P(PSTR("\n[W]ireless [H]ome [C]ontrol [S]ystem Base Station\n"));
   printf_P(PSTR("Starting subsystems...\n"));
 
@@ -238,13 +246,7 @@ int main()
     bluetooth.tick();
     bluetooth.receiveCommand();
 
-    radio_pkt pkt;
-    while(rf24.available())
-    {
-      if(rf24.read(&pkt, MAX_PACKET_SIZE))
-        if(!radio.queuePacket(&pkt))
-            printf("WARNING: Failed to queue\n");
-    }
+    radio.readPackets();
 
     while(radio.available())
     {
