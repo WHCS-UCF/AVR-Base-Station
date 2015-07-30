@@ -51,7 +51,7 @@ void UIMain::onCreate()
   m_vSettingsButton.useBorders(true);
   m_vSettingsButton.setBackgroundColor(COLOR_LIGHTGREY);
   m_vSettingsButton.setForegroundColor(COLOR_BLACK);
-  m_vSettingsButton.setBounds(m_gfx->width()-120, 10, 105, 25);
+  m_vSettingsButton.setBounds(m_gfx->width()-115, 10, 105, 25);
   m_vSettingsButton.setLabel("Credits");
   m_vSettingsButton.setVisible(true);
 
@@ -84,7 +84,17 @@ void UIMain::draw()
     m_gfx->textSize(3);
     m_gfx->textColor(0xe51a);
     m_gfx->puts("W H C S");
-    m_gfx->line({0, 45}, {m_gfx->width()-1, 45}, COLOR_RED);
+    point p1 = {0, 40};
+    point p2 = {m_gfx->width()-1, 40};
+    uint16_t whcsColors[] = {COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN};
+    for(int i = 0; i < sizeof(whcsColors)/sizeof(*whcsColors); i++)
+      for(int j = 0; j < 2; j++, p1.y++, p2.y++)
+        m_gfx->line(p1, p2, whcsColors[i]);
+
+    //m_gfx->line({0, 42}, {m_gfx->width()-1, 42}, COLOR_RED);
+    //m_gfx->line({0, 43}, {m_gfx->width()-1, 43}, COLOR_ORANGE);
+    //m_gfx->line({0, 44}, {m_gfx->width()-1, 44}, COLOR_YELLOW);
+    //m_gfx->line({0, 45}, {m_gfx->width()-1, 45}, COLOR_GREEN);
 
     m_drawFrame = false;
   }
@@ -102,7 +112,7 @@ void UIMain::draw()
 
 void UIMain::setModules(UIControlMod * mods, int num)
 {
-  rect bounds = {0, 45, m_gfx->width()-1, 45};
+  rect bounds = {0, 48, m_gfx->width()-1, 48};
   for(int i = 0; i < num; i++) {
     mods[i].getModule()->printDetails();
     mods[i].setBounds(bounds);

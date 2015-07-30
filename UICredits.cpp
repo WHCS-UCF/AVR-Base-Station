@@ -51,35 +51,28 @@ void UICredits::tick()
 void UICredits::draw()
 {
   m_gfx->clearScreen(COLOR_BLACK);
+  const char * names[] = {"Joseph Love", "Jimmy Campbell", "Grant Hernandez"};
+  uint8_t adjusts[] = {m_gfx->width()/2-6*11, m_gfx->width()/2-6*14, m_gfx->width()/2-6*15};
 
 
   if(m_drawState == 0)
   {
-    m_gfx->drawAsciiArt(20, 0, gImageJoesph, sizeof(gImageJoesph), COLOR_RED);
-    m_gfx->cursor(0, m_gfx->height()-20);
-    m_gfx->textSize(2);
-    m_gfx->textColor(COLOR_GREEN);
-    m_gfx->fillRect(0, m_gfx->height()-20, m_gfx->width()-1, 20, COLOR_BLACK);
-    m_gfx->puts("Joseph Love");
+    m_gfx->drawAsciiArt(20, 0, gImageJoesph, sizeof(gImageJoesph), COLOR_GREEN);
   }
   else if(m_drawState == 1)
   {
     m_gfx->drawAsciiArt(0, 0, gImageJimmy, sizeof(gImageJimmy), COLOR_GREEN);
-    m_gfx->cursor(0, m_gfx->height()-20);
-    m_gfx->textSize(2);
-    m_gfx->textColor(COLOR_GREEN);
-    m_gfx->fillRect(0, m_gfx->height()-20, m_gfx->width()-1, 20, COLOR_BLACK);
-    m_gfx->puts("Jimmy Campbell");
   }
   else if(m_drawState == 2)
   {
-    m_gfx->drawAsciiArt(0, 0, gImageGrant, sizeof(gImageGrant), COLOR_BLUE);
-    m_gfx->cursor(0, m_gfx->height()-20);
-    m_gfx->textSize(2);
-    m_gfx->textColor(COLOR_GREEN);
-    m_gfx->fillRect(0, m_gfx->height()-20, m_gfx->width()-1, 20, COLOR_BLACK);
-    m_gfx->puts("Grant Hernandez");
+    m_gfx->drawAsciiArt(0, 0, gImageGrant, sizeof(gImageGrant), COLOR_GREEN);
   }
+
+  m_gfx->fillRect(0, m_gfx->height()-20, m_gfx->width()-1, 20, COLOR_BLACK);
+  m_gfx->cursor(adjusts[m_drawState], m_gfx->height()-15);
+  m_gfx->textSize(2);
+  m_gfx->textColor(COLOR_GREEN);
+  m_gfx->puts(names[m_drawState]);
 
   m_tSlideshow.once(5000);
 
